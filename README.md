@@ -26,7 +26,14 @@ Required environment variables (see `.env.example`):
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 These must also be set in Vercel → Project → Settings → Environment Variables
-for Preview and Production, or the deployed app cannot reach Supabase.
+for **both Preview and Production**, or the deployed app cannot reach Supabase.
+
+> **`NEXT_PUBLIC_*` values are inlined at build time.** Adding or changing them
+> in the Vercel dashboard has no effect on deployments that already exist — a
+> new build must run. Push a commit, or use Redeploy and confirm a *new*
+> deployment ID appears. If middleware throws
+> `MIDDLEWARE_INVOCATION_FAILED`, check the deployment ID first: if it is the
+> same one as before, no rebuild happened.
 
 ## Scripts
 
