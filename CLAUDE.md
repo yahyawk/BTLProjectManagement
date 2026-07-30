@@ -147,7 +147,7 @@ where it first matters, as a new numbered migration.
 
 | # | Issue | Fix at |
 |---|---|---|
-| 1 | **First `workspace_members` insert is impossible.** `members_write` requires `has_workspace_role(ws,'{owner,admin}')`, but the creator is not a member yet. Needs a `security definer` `create_workspace_with_owner()` RPC. | **M1 — blocking** |
+| 1 | ~~First `workspace_members` insert is impossible.~~ **Fixed in `0002`** by `create_workspace_with_owner()`. A second RPC, `add_workspace_member_by_email()`, covers the related gap that `profiles_select` hides the invitee from the inviter. | ✅ M1 |
 | 2 | **The three reporting views bypass RLS** (`security_definer_view`, ERROR-level in the Supabase advisor). Any signed-in user can read every workspace's workload. Needs `alter view … set (security_invoker = on)`. | **M5 — security** |
 | 3 | `v_task_load` filters `parent_task_id is null` claiming subtask hours "roll up", but nothing rolls them up — subtask estimates vanish from Workload. | M3/M5 |
 | 4 | `next_run_at` is ambiguous: §5.1 advances it to the occurrence date, which makes `lead_time_days` a no-op. Agreed reading: it holds the **occurrence** date; generate when `next_run_at - lead_time_days <= current_date`. | M4 |
@@ -156,6 +156,19 @@ where it first matters, as a new numbered migration.
 | 7 | `sum(...) filter` returns NULL (not 0) with no matching rows, and `adhoc_ratio` divides by a possibly-zero `planned_hours`. Coalesce in the query layer. | M5 |
 | 8 | `alter publication supabase_realtime add table …` is not idempotent — it errors on replay. | M6 |
 | 9 | `seed_default_statuses`, `assign_task_ref`, `sync_task_completion` have mutable `search_path` (advisor WARN). | M6 |
+
+---
+
+### Security-definer RPC rules
+
+`0002` introduces the first RPCs that bypass RLS. Any future one must:
+
+1. `security definer set search_path = public` — never a mutable search_path.
+2. Do its **own** authorization check in the body (`has_workspace_role(...)`),
+   because RLS is not applied. Skipping this is a privilege-escalation hole.
+3. `revoke execute ... from public, anon` and `grant execute ... to authenticated`.
+4. Prefix plpgsql locals with `v_`. A variable named after a column (`slug`)
+   silently shadows it and raises `42702` at runtime, not at deploy time.
 
 ---
 

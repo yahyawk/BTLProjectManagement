@@ -864,8 +864,45 @@ export type Database = {
       }
     }
     Functions: {
+      add_workspace_member_by_email: {
+        Args: {
+          p_email: string
+          p_role?: Database['public']['Enums']['member_role']
+          p_workspace_id: string
+        }
+        Returns: {
+          joined_at: string
+          role: Database['public']['Enums']['member_role']
+          user_id: string
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'workspace_members'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       can_access_project: { Args: { p_id: string }; Returns: boolean }
       can_access_task: { Args: { t_id: string }; Returns: boolean }
+      create_workspace_with_owner: {
+        Args: { p_name: string }
+        Returns: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          slug: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: '*'
+          to: 'workspaces'
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      generate_workspace_slug: { Args: { p_name: string }; Returns: string }
       has_workspace_role: {
         Args: {
           roles: Database['public']['Enums']['member_role'][]
