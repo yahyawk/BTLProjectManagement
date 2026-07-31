@@ -117,22 +117,29 @@ export default async function HomePage({
 
 function ProjectCard({ project }: { project: Project }) {
   return (
-    <li className="rounded-xl border border-slate-200 bg-white p-4">
-      <div className="flex items-center gap-2">
-        <span
-          aria-hidden
-          className="size-2.5 rounded-full"
-          style={{ backgroundColor: project.color }}
-        />
-        <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-medium text-slate-600">
-          {project.key}
-        </span>
-      </div>
-      <p className="mt-2 font-medium text-slate-900">{project.name}</p>
-      <p className="mt-0.5 text-xs capitalize text-slate-500">
-        {project.state.replace('_', ' ')}
-      </p>
-      <p className="mt-3 text-xs text-slate-400">Board arrives in M2</p>
+    <li>
+      <Link
+        href={`/projects/${project.id}/board` as never}
+        className="block rounded-xl border border-slate-200 bg-white p-4 transition
+                   hover:border-slate-300 hover:shadow-sm focus:outline-none
+                   focus:ring-2 focus:ring-indigo-500"
+      >
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="size-2.5 rounded-full"
+            style={{ backgroundColor: project.color }}
+          />
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-medium text-slate-600">
+            {project.key}
+          </span>
+        </div>
+        <p className="mt-2 font-medium text-slate-900">{project.name}</p>
+        <p className="mt-0.5 text-xs capitalize text-slate-500">
+          {project.state.replace('_', ' ')}
+        </p>
+        <p className="mt-3 text-xs text-indigo-600">Open board →</p>
+      </Link>
     </li>
   )
 }

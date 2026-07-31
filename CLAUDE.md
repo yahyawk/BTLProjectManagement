@@ -33,7 +33,8 @@ Locked by `spec.md` §7:
 | Hosting | Vercel |
 
 **Installed so far:** `next`, `react`, `react-dom`, `@supabase/supabase-js`,
-`@supabase/ssr`, `zod`, `tailwindcss`, `typescript`, `eslint-config-next`.
+`@supabase/ssr`, `zod`, `tailwindcss`, `typescript`, `eslint-config-next`,
+`@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`.
 
 `@supabase/ssr` was approved as part of "Supabase" — it is the cookie/session
 adapter for the App Router. **Every other package needs explicit sign-off from
@@ -151,8 +152,8 @@ where it first matters, as a new numbered migration.
 | 2 | **The three reporting views bypass RLS** (`security_definer_view`, ERROR-level in the Supabase advisor). Any signed-in user can read every workspace's workload. Needs `alter view … set (security_invoker = on)`. | **M5 — security** |
 | 3 | `v_task_load` filters `parent_task_id is null` claiming subtask hours "roll up", but nothing rolls them up — subtask estimates vanish from Workload. | M3/M5 |
 | 4 | `next_run_at` is ambiguous: §5.1 advances it to the occurrence date, which makes `lead_time_days` a no-op. Agreed reading: it holds the **occurrence** date; generate when `next_run_at - lead_time_days <= current_date`. | M4 |
-| 5 | `/tasks/[ref]` is not globally unique — `ref` is unique per *project*. Needs project scoping. | M2 |
-| 6 | `assign_task_ref()` is not `security definer`, so inserting a task silently requires UPDATE on `projects`. A `viewer` passes the `tasks` policy but the trigger then writes a NULL `ref`. | M2 |
+| 5 | ~~`/tasks/[ref]` is not globally unique.~~ **Fixed in M2** — the route is `/projects/[projectId]/tasks/[ref]` and `getTaskByRef` filters on both. | ✅ M2 |
+| 6 | ~~`assign_task_ref()` is not `security definer`.~~ **Fixed in `0003`**, which also split `tasks_all` into select/insert/update/delete so a `viewer` is genuinely read-only (`can_write_project`) rather than failing later on a NULL `ref`. | ✅ M2 |
 | 7 | `sum(...) filter` returns NULL (not 0) with no matching rows, and `adhoc_ratio` divides by a possibly-zero `planned_hours`. Coalesce in the query layer. | M5 |
 | 8 | `alter publication supabase_realtime add table …` is not idempotent — it errors on replay. | M6 |
 | 9 | `seed_default_statuses`, `assign_task_ref`, `sync_task_completion` have mutable `search_path` (advisor WARN). | M6 |
@@ -174,10 +175,15 @@ where it first matters, as a new numbered migration.
 
 ## 9. UI conventions
 
-- shadcn/ui is the target per §7 but is **not installed** — it needs
-  `clsx`, `tailwind-merge`, `class-variance-authority` and Radix, which the user
-  has not approved. M0 ships hand-rolled primitives in `components/ui/field.tsx`.
-  **Ask before installing shadcn at M2**, then migrate those primitives.
+- shadcn/ui is the target per §7 but is **not installed** — the user declined
+  its dependencies at M0 and again at M2. Primitives are hand-rolled in
+  `components/ui/`. The task modal uses the native `<dialog>` element, which
+  gives focus trapping, Esc-to-close and a top-layer backdrop for free — that
+  is what made skipping a headless-UI dependency viable. Ask again only if the
+  UI outgrows it.
+- **Never interpolate Tailwind class names** (`` `border-${accent}` ``). Class
+  extraction is static, so those silently produce no CSS. Write both branches
+  out in full.
 - Ad-hoc tasks must be visually distinct from recurring ones everywhere they
   appear (`spec.md` §5.2). Tokens live in `@theme`: `--color-adhoc`,
   `--color-recurring`.

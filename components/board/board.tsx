@@ -1,0 +1,285 @@
+'use client'
+
+import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  KeyboardSensor,
+  closestCorners,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  useSortable,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+import type { BoardColumn } from '@/lib/queries/tasks'
+import type { Task } from '@/lib/types'
+import { moveTaskAction } from '@/app/(app)/projects/[projectId]/actions'
+import { TaskCardBody, TaskCardLink } from './task-card'
+
+type Props = {
+  projectId: string
+  columns: BoardColumn[]
+  canWrite: boolean
+}
+
+export function Board({ projectId, columns: serverColumns, canWrite }: Props) {
+  // Optimistic mirror of the server data. Re-synced whenever the server sends
+  // a new board (after revalidatePath), so a rejected move snaps back.
+  const [columns, setColumns] = useState(serverColumns)
+  const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [, startTransition] = useTransition()
+  const router = useRouter()
+
+  useEffect(() => {
+    setColumns(serverColumns)
+  }, [serverColumns])
+
+  const sensors = useSensors(
+    // A small distance threshold keeps a click-to-open from being read as a
+    // drag, so cards stay clickable links.
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const taskIndex = useMemo(() => {
+    const map = new Map<string, { task: Task; columnId: string }>()
+    for (const column of columns) {
+      for (const task of column.tasks) map.set(task.id, { task, columnId: column.id })
+    }
+    return map
+  }, [columns])
+
+  function handleDragStart(event: DragStartEvent) {
+    setError(null)
+    setActiveTask(taskIndex.get(String(event.active.id))?.task ?? null)
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    setActiveTask(null)
+    if (!over) return
+
+    const activeId = String(active.id)
+    const source = taskIndex.get(activeId)
+    if (!source) return
+
+    const overId = String(over.id)
+    // Dropping on a column drops at its end; dropping on a card inserts there.
+    const overColumn = columns.find((c) => c.id === overId)
+    const target = overColumn
+      ? { columnId: overColumn.id, index: overColumn.tasks.length }
+      : (() => {
+          const overTask = taskIndex.get(overId)
+          if (!overTask) return null
+          const column = columns.find((c) => c.id === overTask.columnId)!
+          return { columnId: column.id, index: column.tasks.findIndex((t) => t.id === overId) }
+        })()
+
+    if (!target) return
+
+    const previous = columns
+
+    // Build the next board optimistically.
+    const withoutTask = columns.map((column) => ({
+      ...column,
+      tasks: column.tasks.filter((t) => t.id !== activeId),
+    }))
+
+    const targetColumn = withoutTask.find((c) => c.id === target.columnId)!
+    let insertAt = target.index
+    if (source.columnId === target.columnId) {
+      const oldIndex = previous
+        .find((c) => c.id === source.columnId)!
+        .tasks.findIndex((t) => t.id === activeId)
+      if (oldIndex < target.index) insertAt = Math.max(0, target.index - 1)
+    }
+    insertAt = Math.min(insertAt, targetColumn.tasks.length)
+
+    const moved = { ...source.task, status_id: target.columnId }
+    targetColumn.tasks = [
+      ...targetColumn.tasks.slice(0, insertAt),
+      moved,
+      ...targetColumn.tasks.slice(insertAt),
+    ]
+
+    const beforeId = targetColumn.tasks[insertAt - 1]?.id ?? null
+    const afterId = targetColumn.tasks[insertAt + 1]?.id ?? null
+
+    if (
+      source.columnId === target.columnId &&
+      beforeId === null &&
+      afterId === null &&
+      previous.find((c) => c.id === source.columnId)!.tasks.length === 1
+    ) {
+      return // nothing actually moved
+    }
+
+    setColumns(withoutTask)
+
+    startTransition(async () => {
+      const result = await moveTaskAction({
+        projectId,
+        taskId: activeId,
+        statusId: target.columnId,
+        beforeId,
+        afterId,
+      })
+
+      if (!result.ok) {
+        setColumns(previous)
+        setError(result.error ?? 'Could not move that task.')
+        return
+      }
+
+      // Pull the authoritative order back so positions stay in sync.
+      router.refresh()
+    })
+  }
+
+  if (!canWrite) {
+    return (
+      <>
+        <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          You have view-only access to this project, so cards cannot be moved.
+        </p>
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {columns.map((column) => (
+            <ReadOnlyColumn key={column.id} column={column} projectId={projectId} />
+          ))}
+        </div>
+      </>
+    )
+  }
+
+  return (
+    <>
+      {error ? (
+        <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {error}
+        </p>
+      ) : null}
+
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveTask(null)}
+      >
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {columns.map((column) => (
+            <Column key={column.id} column={column} projectId={projectId} />
+          ))}
+        </div>
+
+        <DragOverlay>
+          {activeTask ? (
+            <div className="w-72 rotate-2 opacity-95">
+              <TaskCardBody task={activeTask} />
+            </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    </>
+  )
+}
+
+function ColumnShell({
+  column,
+  children,
+}: {
+  column: BoardColumn
+  children: React.ReactNode
+}) {
+  const overLimit = column.wip_limit !== null && column.tasks.length > column.wip_limit
+
+  return (
+    <section className="flex w-72 shrink-0 flex-col rounded-xl bg-slate-100/70 p-3">
+      <header className="mb-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden
+            className="size-2.5 rounded-full"
+            style={{ backgroundColor: column.color }}
+          />
+          <h3 className="text-sm font-medium text-slate-900">{column.name}</h3>
+        </div>
+        <span
+          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
+            overLimit ? 'bg-red-100 text-red-700' : 'bg-white text-slate-500'
+          }`}
+          title={column.wip_limit ? `WIP limit ${column.wip_limit}` : undefined}
+        >
+          {column.tasks.length}
+          {column.wip_limit ? ` / ${column.wip_limit}` : ''}
+        </span>
+      </header>
+      <div className="flex min-h-24 flex-col gap-2">{children}</div>
+    </section>
+  )
+}
+
+function Column({ column, projectId }: { column: BoardColumn; projectId: string }) {
+  const { setNodeRef, isOver } = useSortable({ id: column.id, data: { isColumn: true } })
+
+  return (
+    <ColumnShell column={column}>
+      <div
+        ref={setNodeRef}
+        className={`flex min-h-24 flex-col gap-2 rounded-lg ${
+          isOver ? 'bg-indigo-50/60 outline-2 outline-dashed outline-indigo-300' : ''
+        }`}
+      >
+        <SortableContext
+          items={column.tasks.map((t) => t.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {column.tasks.map((task) => (
+            <SortableTask key={task.id} task={task} projectId={projectId} />
+          ))}
+        </SortableContext>
+        {column.tasks.length === 0 ? (
+          <p className="px-1 py-6 text-center text-xs text-slate-400">Drop cards here</p>
+        ) : null}
+      </div>
+    </ColumnShell>
+  )
+}
+
+function ReadOnlyColumn({ column, projectId }: { column: BoardColumn; projectId: string }) {
+  return (
+    <ColumnShell column={column}>
+      {column.tasks.map((task) => (
+        <TaskCardLink key={task.id} task={task} projectId={projectId} />
+      ))}
+    </ColumnShell>
+  )
+}
+
+function SortableTask({ task, projectId }: { task: Task; projectId: string }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: task.id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={isDragging ? 'opacity-40' : undefined}
+      {...attributes}
+      {...listeners}
+    >
+      <TaskCardLink task={task} projectId={projectId} />
+    </div>
+  )
+}

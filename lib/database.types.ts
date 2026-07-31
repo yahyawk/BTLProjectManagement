@@ -885,6 +885,7 @@ export type Database = {
       }
       can_access_project: { Args: { p_id: string }; Returns: boolean }
       can_access_task: { Args: { t_id: string }; Returns: boolean }
+      can_write_project: { Args: { p_id: string }; Returns: boolean }
       create_workspace_with_owner: {
         Args: { p_name: string }
         Returns: {

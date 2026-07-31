@@ -46,6 +46,31 @@ export async function listProjects(workspaceId: string): Promise<QueryResult<Pro
   return { ok: true, data: data ?? [] }
 }
 
+/** A single project by id, or null when RLS hides it / it does not exist. */
+export async function getProject(projectId: string): Promise<QueryResult<Project | null>> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('projects')
+    .select('*')
+    .eq('id', projectId)
+    .maybeSingle()
+
+  if (error) return { ok: false, error: error.message }
+
+  return { ok: true, data }
+}
+
+/** Whether the signed-in user may write tasks here (i.e. is not a viewer). */
+export async function canWriteProject(projectId: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('can_write_project', { p_id: projectId })
+
+  if (error) return false
+
+  return data === true
+}
+
 /**
  * Creates a project. The `on_project_created` trigger seeds the four default
  * workflow_statuses (Backlog / In Progress / In Review / Done) — do not insert
