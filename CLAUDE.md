@@ -73,8 +73,9 @@ Env is read through `lib/env.ts`, which validates lazily with Zod so
     /login, /signup
   /(app)                      protected shell; getUser() guard in layout.tsx
     page.tsx                  workspace home  (/)
-    /projects/[projectId]/{board,list,recurring,settings}   (M1–M4)
-    /my-tasks, /workload, /reports                          (M3–M5)
+    error.tsx, not-found.tsx  boundaries for every protected route
+    /projects/[projectId]/{board,list,recurring,settings,tasks/[ref]}
+    /my-tasks, /workload, /reports, /profile
   /api/cron/generate-recurring/route.ts                     (M4)
 /components
   /ui                         shared primitives
@@ -227,13 +228,9 @@ where it first matters, as a new numbered migration.
 All six milestones are implemented on `claude/app-setup-m0-85feb5`. Every issue
 in §8 is closed. Migrations `0001`–`0006` are applied to the Supabase project.
 
-**Not built, deliberately** — `spec.md` §6 lists these routes but no milestone's
-"done when" requires them, so they were never in scope:
-
-- `/projects/[projectId]/list` — flat sortable table
-- `/projects/[projectId]/settings` — project name/key/columns editing (labels
-  and members are editable from the board and `/` respectively)
-- `/my-tasks` — cross-project view grouped Overdue / Today / This week / Later
+Every route in `spec.md` §6 now exists. The three that no milestone's "done
+when" required — `/my-tasks`, `/projects/[projectId]/list` and
+`/projects/[projectId]/settings` — were added after M6 to close the gap.
 
 **Known limitations, all deliberate:**
 

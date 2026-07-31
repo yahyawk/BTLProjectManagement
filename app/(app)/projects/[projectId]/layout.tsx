@@ -75,7 +75,9 @@ export default async function ProjectLayout({
 
       <nav className="flex gap-1 border-b border-slate-200" aria-label="Project views">
         <ProjectTab href={`/projects/${projectId}/board`}>Board</ProjectTab>
+        <ProjectTab href={`/projects/${projectId}/list`}>List</ProjectTab>
         <ProjectTab href={`/projects/${projectId}/recurring`}>Recurring</ProjectTab>
+        <ProjectTab href={`/projects/${projectId}/settings`}>Settings</ProjectTab>
       </nav>
 
       {children}

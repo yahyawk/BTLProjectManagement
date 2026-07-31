@@ -1,6 +1,8 @@
 import { z } from 'zod'
 
 import { POSITION_GAP } from '@/lib/constants'
+import { todayIso, weekStartOf } from '@/lib/dates'
+import { addDays as addDaysIso } from '@/lib/recurrence'
 import { createClient } from '@/lib/supabase/server'
 import type {
   Label,
@@ -385,4 +387,92 @@ export async function moveTask(input: unknown): Promise<QueryResult<Task>> {
   if (!data) return toError('That task no longer exists, or you cannot move it.')
 
   return { ok: true, data }
+}
+
+// --- Cross-project views ----------------------------------------------
+
+export type MyTask = BoardTask & {
+  project_name: string
+  project_key: string
+  project_color: string
+  status_name: string
+  status_category: string
+}
+
+export type MyTaskBuckets = {
+  overdue: MyTask[]
+  today: MyTask[]
+  thisWeek: MyTask[]
+  later: MyTask[]
+  noDate: MyTask[]
+}
+
+/**
+ * Everything assigned to the signed-in user, across every project they can
+ * see (spec.md §6, /my-tasks).
+ *
+ * Done and cancelled columns are excluded — this is a "what do I still owe"
+ * list, not an archive. Subtasks are included here (unlike the board), because
+ * a subtask assigned to you is genuinely your work.
+ */
+export async function getMyTasks(): Promise<QueryResult<MyTaskBuckets>> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return toError('You are not signed in.')
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .select(
+      '*, task_labels(labels(*)), projects!inner(name, key, color), workflow_statuses!inner(name, category)',
+    )
+    .eq('assignee_id', user.id)
+    .eq('is_archived', false)
+    .order('due_date', { ascending: true, nullsFirst: false })
+
+  if (error) return toError(error.message)
+
+  type Row = TaskRow & {
+    projects: { name: string; key: string; color: string }
+    workflow_statuses: { name: string; category: string }
+  }
+
+  const tasks: MyTask[] = (data ?? [])
+    .map((raw) => {
+      const row = raw as unknown as Row
+      const { projects, workflow_statuses, ...rest } = row
+      return {
+        ...withLabels(rest as TaskRow),
+        project_name: projects.name,
+        project_key: projects.key,
+        project_color: projects.color,
+        status_name: workflow_statuses.name,
+        status_category: workflow_statuses.category,
+      }
+    })
+    .filter((t) => t.status_category !== 'done' && t.status_category !== 'cancelled')
+
+  const today = todayIso()
+  // ISO weeks run Monday–Sunday, matching date_trunc('week') in the views.
+  const endOfWeek = addDaysIso(weekStartOf(today), 6)
+
+  const buckets: MyTaskBuckets = {
+    overdue: [],
+    today: [],
+    thisWeek: [],
+    later: [],
+    noDate: [],
+  }
+
+  for (const task of tasks) {
+    if (!task.due_date) buckets.noDate.push(task)
+    else if (task.due_date < today) buckets.overdue.push(task)
+    else if (task.due_date === today) buckets.today.push(task)
+    else if (task.due_date <= endOfWeek) buckets.thisWeek.push(task)
+    else buckets.later.push(task)
+  }
+
+  return { ok: true, data: buckets }
 }

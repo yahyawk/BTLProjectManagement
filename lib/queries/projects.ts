@@ -123,3 +123,71 @@ export async function createProject(input: unknown): Promise<QueryResult<Project
 
   return { ok: true, data }
 }
+
+export const updateProjectSchema = z.object({
+  projectId: z.uuid('Invalid project'),
+  name: z
+    .string()
+    .trim()
+    .min(2, 'Project name must be at least 2 characters')
+    .max(80, 'Project name must be 80 characters or fewer'),
+  key: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(
+      /^[A-Z][A-Z0-9]{1,9}$/,
+      'Key must be 2–10 characters, start with a letter, and use only A–Z and 0–9',
+    ),
+  description: z.string().trim().max(500).optional().or(z.literal('')),
+  state: z.enum(['active', 'on_hold', 'completed', 'archived']),
+})
+
+/**
+ * Renames a project or changes its key.
+ *
+ * Note the key only affects tasks created *afterwards*: `tasks.ref` is a
+ * stored string set at insert time, so existing OPS-1…OPS-9 keep their old
+ * prefix. Rewriting them would break every link and reference already shared
+ * outside the app, which is worse than a mixed prefix.
+ */
+export async function updateProject(input: unknown): Promise<QueryResult<Project>> {
+  const parsed = updateProjectSchema.safeParse(input)
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: 'Please fix the highlighted fields.',
+      fieldErrors: z.flattenError(parsed.error).fieldErrors,
+    }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('projects')
+    .update({
+      name: parsed.data.name,
+      key: parsed.data.key,
+      description: parsed.data.description || null,
+      state: parsed.data.state,
+    })
+    .eq('id', parsed.data.projectId)
+    .select()
+    .single()
+
+  if (error) {
+    if (error.code === '23505') {
+      return {
+        ok: false,
+        error: `Another project in this workspace already uses the key ${parsed.data.key}.`,
+        fieldErrors: { key: ['This key is already taken'] },
+      }
+    }
+    if (error.code === '42501') {
+      return { ok: false, error: 'You do not have permission to edit this project.' }
+    }
+    return { ok: false, error: error.message }
+  }
+  if (!data) return { ok: false, error: 'That project no longer exists, or you cannot edit it.' }
+
+  return { ok: true, data }
+}

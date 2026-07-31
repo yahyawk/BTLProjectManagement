@@ -41,6 +41,7 @@ export default async function AppLayout({
             </Link>
             <nav className="flex items-center gap-1" aria-label="Main">
               <NavLink href="/">Projects</NavLink>
+              <NavLink href="/my-tasks">My tasks</NavLink>
               <NavLink href="/workload">Workload</NavLink>
               <NavLink href="/reports">Reports</NavLink>
             </nav>
