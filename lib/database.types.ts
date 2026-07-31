@@ -834,6 +834,7 @@ export type Database = {
       v_workload_weekly: {
         Row: {
           adhoc_hours: number | null
+          adhoc_ratio_pct: number | null
           adhoc_task_count: number | null
           assignee_id: string | null
           capacity_hours: number | null

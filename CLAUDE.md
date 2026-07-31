@@ -165,15 +165,15 @@ where it first matters, as a new numbered migration.
 | # | Issue | Fix at |
 |---|---|---|
 | 1 | ~~First `workspace_members` insert is impossible.~~ **Fixed in `0002`** by `create_workspace_with_owner()`. A second RPC, `add_workspace_member_by_email()`, covers the related gap that `profiles_select` hides the invitee from the inviter. | ✅ M1 |
-| 2 | **The three reporting views bypass RLS** (`security_definer_view`, ERROR-level in the Supabase advisor). Any signed-in user can read every workspace's workload. Needs `alter view … set (security_invoker = on)`. | **M5 — security** |
-| 3 | `v_task_load` filters `parent_task_id is null` claiming subtask hours "roll up", but nothing rolls them up — subtask estimates vanish from Workload. **M3 made this reachable**: subtasks now carry their own assignee and `estimate_hours`, so the hours exist and are silently excluded. Decide in M5: either sum subtask estimates into the parent, or drop the `parent_task_id is null` filter and count subtasks directly. | **M5 — decide** |
+| 2 | ~~The three reporting views bypass RLS.~~ **Fixed in `0005`** with `security_invoker = on`. All three ERROR-level advisor lints are gone; verified that a non-member reads 0 rows from every view. | ✅ M5 |
+| 3 | ~~Subtask estimates vanished from Workload.~~ **Decided and fixed in `0005`**: the `parent_task_id is null` filter is gone, so every task counts its own estimate against its own assignee. A roll-up would have credited the parent's assignee for a subtask someone else owns. **Trade-off:** estimating a parent *and* its subtasks double-counts — estimate at one level. | ✅ M5 |
 | 10 | ~~`can_access_project()`/`can_access_task()` were used as *write* gates on six tables, so a `viewer` could edit board columns, labels, templates, project members, task labels and checklist items.~~ **Fixed in `0004`** via `can_write_project()` / `can_write_task()`. Comments remain open to viewers deliberately. | ✅ M3 |
 | 4 | ~~`next_run_at` is ambiguous.~~ **Settled in M4**: it holds the **occurrence** date, and `isDue()` fires when `next_run_at - lead_time_days <= current_date`. Comparing `next_run_at` to today directly would make `lead_time_days` a no-op. Covered by unit tests. | ✅ M4 |
 | 5 | ~~`/tasks/[ref]` is not globally unique.~~ **Fixed in M2** — the route is `/projects/[projectId]/tasks/[ref]` and `getTaskByRef` filters on both. | ✅ M2 |
 | 6 | ~~`assign_task_ref()` is not `security definer`.~~ **Fixed in `0003`**, which also split `tasks_all` into select/insert/update/delete so a `viewer` is genuinely read-only (`can_write_project`) rather than failing later on a NULL `ref`. | ✅ M2 |
-| 7 | `sum(...) filter` returns NULL (not 0) with no matching rows, and `adhoc_ratio` divides by a possibly-zero `planned_hours`. Coalesce in the query layer. | M5 |
+| 7 | ~~`sum(...) filter` returns NULL, and `adhoc_ratio` divides by zero.~~ **Fixed in `0005`**: every aggregate is coalesced in the view and `adhoc_ratio_pct` is now exposed (0001 defined it in the spec but never built it). | ✅ M5 |
 | 8 | `alter publication supabase_realtime add table …` is not idempotent — it errors on replay. | M6 |
-| 9 | `seed_default_statuses`, `assign_task_ref`, `sync_task_completion` have mutable `search_path` (advisor WARN). | M6 |
+| 9 | `seed_default_statuses` and `sync_task_completion` have mutable `search_path` (advisor WARN). Also revoke EXECUTE on the trigger functions — the advisor flags `assign_task_ref` as RPC-callable by `anon`, which is meaningless (it needs a trigger context) but should not be exposed. | M6 |
 
 ---
 

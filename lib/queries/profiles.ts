@@ -1,3 +1,6 @@
+import { z } from 'zod'
+
+import { capacitySchema } from '@/lib/queries/workload'
 import { createClient } from '@/lib/supabase/server'
 import type { Profile, QueryResult } from '@/lib/types'
 
@@ -23,6 +26,47 @@ export async function getMyProfile(): Promise<QueryResult<Profile | null>> {
     .maybeSingle()
 
   if (error) return { ok: false, error: error.message }
+
+  return { ok: true, data }
+}
+
+/**
+ * Updates the signed-in user's own profile — including
+ * `weekly_capacity_hours`, the denominator for the whole Workload view.
+ *
+ * `profiles_update` restricts this to `id = auth.uid()`, so the id comes from
+ * the session and is never accepted from the form.
+ */
+export async function updateMyProfile(input: unknown): Promise<QueryResult<Profile>> {
+  const parsed = capacitySchema.safeParse(input)
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: 'Please fix the highlighted fields.',
+      fieldErrors: z.flattenError(parsed.error).fieldErrors,
+    }
+  }
+
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'You are not signed in.' }
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({
+      full_name: parsed.data.fullName,
+      job_title: parsed.data.jobTitle || null,
+      weekly_capacity_hours: parsed.data.weeklyCapacityHours,
+      timezone: parsed.data.timezone,
+    })
+    .eq('id', user.id)
+    .select()
+    .single()
+
+  if (error) return { ok: false, error: error.message }
+  if (!data) return { ok: false, error: 'Could not update your profile.' }
 
   return { ok: true, data }
 }

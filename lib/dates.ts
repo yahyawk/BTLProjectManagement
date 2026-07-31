@@ -43,3 +43,29 @@ export function formatTimestamp(iso: string): string {
     minute: '2-digit',
   })
 }
+
+// --- ISO weeks --------------------------------------------------------
+// The reporting views bucket with date_trunc('week'), which in Postgres is
+// Monday-based. These helpers must agree with that or the grid and the data
+// will disagree about which week a task belongs to.
+
+/** Monday of the ISO week containing `iso`. */
+export function weekStartOf(iso: string): string {
+  const date = new Date(`${iso}T00:00:00Z`)
+  const day = date.getUTCDay() // 0 = Sunday
+  const offset = day === 0 ? -6 : 1 - day
+  date.setUTCDate(date.getUTCDate() + offset)
+  return date.toISOString().slice(0, 10)
+}
+
+export function addWeeks(iso: string, n: number): string {
+  const date = new Date(`${iso}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + n * 7)
+  return date.toISOString().slice(0, 10)
+}
+
+/** `count` consecutive week-start dates, beginning with the week of `from`. */
+export function weekRange(from: string, count: number): string[] {
+  const start = weekStartOf(from)
+  return Array.from({ length: count }, (_, i) => addWeeks(start, i))
+}
