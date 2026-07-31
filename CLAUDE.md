@@ -49,9 +49,12 @@ the user before `npm install`.** That includes transitive-looking things like
   documents the variable names only, never values.
 - `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` are safe in the
   browser; they are only as powerful as RLS allows.
-- `SUPABASE_SERVICE_ROLE_KEY` **bypasses RLS**. It arrives in M4 and may be read
-  in exactly one place: `app/api/cron/generate-recurring/route.ts`. Never import
-  it from `/lib/supabase/client.ts`, never from anything under `/components`.
+- `SUPABASE_SERVICE_ROLE_KEY` **bypasses RLS**. It is read in exactly one
+  place: `app/api/cron/generate-recurring/route.ts`. Never import it from
+  `/lib/supabase/client.ts`, never from anything under `/components`.
+- `CRON_SECRET` guards that route. Vercel Cron sends it as
+  `Authorization: Bearer $CRON_SECRET`. The check **fails closed**: if the
+  variable is unset the route returns 401 rather than running unauthenticated.
 - Never paste a real key into source, a comment, a commit message, or a PR body.
 
 Env is read through `lib/env.ts`, which validates lazily with Zod so
@@ -84,7 +87,8 @@ Env is read through `lib/env.ts`, which validates lazily with Zod so
   dates.ts                    LEAF — isOverdue, formatDate, todayIso
   /supabase                   client.ts (browser), server.ts, middleware.ts
   /queries                    ALL data access, one file per entity
-  recurrence.ts               computeNextOccurrence()                (M4)
+  recurrence.ts               computeNextOccurrence(), isDue() — pure
+  recurrence.test.ts          node:test unit tests
 /supabase/migrations          numbered SQL, applied in order
 middleware.ts                 session refresh + route protection
 ```
@@ -146,6 +150,11 @@ Every milestone must therefore end in a state that builds cleanly. Run
 `npm run build` (not just `tsc --noEmit`) before committing — `typedRoutes` and
 the client/server boundary only fail at build time.
 
+`npm test` runs the pure-logic unit tests through Node's built-in runner with
+native TypeScript stripping (Node 22+). No test framework is installed, and
+none should be added without asking. Anything with date maths or money maths
+belongs in a pure module with tests, not inside a component.
+
 ---
 
 ## 8. Known issues in the shipped schema
@@ -159,7 +168,7 @@ where it first matters, as a new numbered migration.
 | 2 | **The three reporting views bypass RLS** (`security_definer_view`, ERROR-level in the Supabase advisor). Any signed-in user can read every workspace's workload. Needs `alter view … set (security_invoker = on)`. | **M5 — security** |
 | 3 | `v_task_load` filters `parent_task_id is null` claiming subtask hours "roll up", but nothing rolls them up — subtask estimates vanish from Workload. **M3 made this reachable**: subtasks now carry their own assignee and `estimate_hours`, so the hours exist and are silently excluded. Decide in M5: either sum subtask estimates into the parent, or drop the `parent_task_id is null` filter and count subtasks directly. | **M5 — decide** |
 | 10 | ~~`can_access_project()`/`can_access_task()` were used as *write* gates on six tables, so a `viewer` could edit board columns, labels, templates, project members, task labels and checklist items.~~ **Fixed in `0004`** via `can_write_project()` / `can_write_task()`. Comments remain open to viewers deliberately. | ✅ M3 |
-| 4 | `next_run_at` is ambiguous: §5.1 advances it to the occurrence date, which makes `lead_time_days` a no-op. Agreed reading: it holds the **occurrence** date; generate when `next_run_at - lead_time_days <= current_date`. | M4 |
+| 4 | ~~`next_run_at` is ambiguous.~~ **Settled in M4**: it holds the **occurrence** date, and `isDue()` fires when `next_run_at - lead_time_days <= current_date`. Comparing `next_run_at` to today directly would make `lead_time_days` a no-op. Covered by unit tests. | ✅ M4 |
 | 5 | ~~`/tasks/[ref]` is not globally unique.~~ **Fixed in M2** — the route is `/projects/[projectId]/tasks/[ref]` and `getTaskByRef` filters on both. | ✅ M2 |
 | 6 | ~~`assign_task_ref()` is not `security definer`.~~ **Fixed in `0003`**, which also split `tasks_all` into select/insert/update/delete so a `viewer` is genuinely read-only (`can_write_project`) rather than failing later on a NULL `ref`. | ✅ M2 |
 | 7 | `sum(...) filter` returns NULL (not 0) with no matching rows, and `adhoc_ratio` divides by a possibly-zero `planned_hours`. Coalesce in the query layer. | M5 |

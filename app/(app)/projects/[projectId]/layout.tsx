@@ -3,6 +3,18 @@ import { notFound } from 'next/navigation'
 
 import { getProject } from '@/lib/queries/projects'
 
+function ProjectTab({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href as never}
+      className="-mb-px border-b-2 border-transparent px-3 py-2 text-sm font-medium
+                 text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
+    >
+      {children}
+    </Link>
+  )
+}
+
 /**
  * `modal` is a parallel route slot. Navigating to a task from the board is
  * intercepted into it (see @modal/(.)tasks/[ref]) so the detail opens over the
@@ -60,6 +72,11 @@ export default async function ProjectLayout({
           All projects
         </Link>
       </header>
+
+      <nav className="flex gap-1 border-b border-slate-200" aria-label="Project views">
+        <ProjectTab href={`/projects/${projectId}/board`}>Board</ProjectTab>
+        <ProjectTab href={`/projects/${projectId}/recurring`}>Recurring</ProjectTab>
+      </nav>
 
       {children}
       {modal}
