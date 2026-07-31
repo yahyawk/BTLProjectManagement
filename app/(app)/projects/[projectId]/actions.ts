@@ -10,6 +10,7 @@ import {
 import { addComment, deleteComment } from '@/lib/queries/comments'
 import { createLabel, deleteLabel, setTaskLabels } from '@/lib/queries/labels'
 import { createTask, deleteTask, moveTask, updateTask } from '@/lib/queries/tasks'
+import { deleteTimeEntry, logTime } from '@/lib/queries/time-entries'
 
 export type TaskFormState = {
   error?: string
@@ -201,5 +202,32 @@ export async function addCommentAction(
 export async function deleteCommentAction(formData: FormData) {
   const projectId = String(formData.get('projectId') ?? '')
   await deleteComment(formData.get('commentId'))
+  revalidateProject(projectId)
+}
+
+// --- Time entries -----------------------------------------------------
+
+export async function logTimeAction(
+  _prev: TaskFormState,
+  formData: FormData,
+): Promise<TaskFormState> {
+  const projectId = String(formData.get('projectId') ?? '')
+
+  const result = await logTime({
+    taskId: formData.get('taskId'),
+    hours: formData.get('hours'),
+    entryDate: formData.get('entryDate'),
+    note: formData.get('note') ?? '',
+  })
+
+  if (!result.ok) return { error: result.error, fieldErrors: result.fieldErrors }
+
+  revalidateProject(projectId)
+  return {}
+}
+
+export async function deleteTimeEntryAction(formData: FormData) {
+  const projectId = String(formData.get('projectId') ?? '')
+  await deleteTimeEntry(formData.get('entryId'))
   revalidateProject(projectId)
 }

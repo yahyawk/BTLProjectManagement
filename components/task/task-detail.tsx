@@ -2,12 +2,14 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { Checklist } from '@/components/task/checklist'
+import { TimeLog } from '@/components/task/time-log'
 import { Comments } from '@/components/task/comments'
 import { EditTaskForm } from '@/components/task/edit-task-form'
 import { NewTaskForm } from '@/components/board/new-task-form'
 import { formatDate, isOverdue } from '@/lib/dates'
 import { listChecklist } from '@/lib/queries/checklist'
 import { listComments } from '@/lib/queries/comments'
+import { getTaskTime } from '@/lib/queries/time-entries'
 import { listLabels } from '@/lib/queries/labels'
 import { canWriteProject } from '@/lib/queries/projects'
 import { createClient } from '@/lib/supabase/server'
@@ -50,6 +52,7 @@ export async function TaskDetail({
     subtasksResult,
     checklistResult,
     commentsResult,
+    timeResult,
     canWrite,
   ] = await Promise.all([
     supabase.auth.getUser(),
@@ -59,6 +62,7 @@ export async function TaskDetail({
     listSubtasks(task.id),
     listChecklist(task.id),
     listComments(task.id),
+    getTaskTime(task.id),
     canWriteProject(projectId),
   ])
 
@@ -70,6 +74,9 @@ export async function TaskDetail({
   const subtasks = subtasksResult.ok ? subtasksResult.data : []
   const checklist = checklistResult.ok ? checklistResult.data : []
   const comments = commentsResult.ok ? commentsResult.data : []
+  const time = timeResult.ok
+    ? timeResult.data
+    : { entries: [], totalHours: 0, myHours: 0 }
 
   const isAdhoc = task.work_type === 'adhoc'
   const overdue = isOverdue(task.due_date, category)
@@ -131,6 +138,16 @@ export async function TaskDetail({
         items={checklist}
         canWrite={canWrite}
       />
+
+      {auth.user ? (
+        <TimeLog
+          projectId={projectId}
+          taskId={task.id}
+          summary={time}
+          estimateHours={task.estimate_hours}
+          currentUserId={auth.user.id}
+        />
+      ) : null}
 
       {auth.user ? (
         <Comments

@@ -2,6 +2,7 @@ import { Board } from '@/components/board/board'
 import { FilterBar } from '@/components/board/filter-bar'
 import { LabelsPanel } from '@/components/board/labels-panel'
 import { NewTaskForm } from '@/components/board/new-task-form'
+import { RealtimeBoard } from '@/components/board/realtime-board'
 import { Panel } from '@/components/ui/panel'
 import { listLabels } from '@/lib/queries/labels'
 import { canWriteProject } from '@/lib/queries/projects'
@@ -102,6 +103,9 @@ export default async function BoardPage({
             {overdue} overdue
           </span>
         ) : null}
+        <span className="ml-auto">
+          <RealtimeBoard projectId={projectId} />
+        </span>
       </div>
 
       <FilterBar

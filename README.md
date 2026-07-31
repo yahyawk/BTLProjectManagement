@@ -9,8 +9,14 @@ work a first-class concept, so a lead can see where capacity actually goes.
 
 ## Status
 
-**M0 — Foundation.** Next.js 15 + Tailwind v4 + Supabase scaffold, schema
-applied, generated types, email/password auth with a protected app shell.
+**M0–M6 complete.** Auth and protected shell; workspaces, projects and
+membership; kanban board with drag-and-drop and a deep-linkable task modal;
+labels, dates, estimates, subtasks, checklists and comments; a unit-tested
+recurrence engine with a cron generator; workload and ad-hoc reporting; time
+entries, Realtime board sync, loading skeletons and error boundaries.
+
+Six migrations are applied. `supabase/seed.sql` loads a demo workspace with
+three people across four weeks.
 
 ## Setup
 
@@ -41,4 +47,5 @@ for **both Preview and Production**, or the deployed app cannot reach Supabase.
 |---|---|
 | `npm run build` | Production build — the gate before every commit |
 | `npm run typecheck` | `tsc --noEmit` |
+| `npm test` | Pure-logic unit tests (Node's built-in runner) |
 | `npm run lint` | ESLint |

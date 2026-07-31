@@ -27,8 +27,8 @@ Locked by `spec.md` §7:
 | Components | shadcn/ui — **not yet installed**, see §9 |
 | Backend | Supabase (Postgres 17, Auth, RLS, Realtime) |
 | Drag & drop | `@dnd-kit/core` (M2) |
-| Server state | TanStack Query (M2+) |
-| Dates | `date-fns` (M4+) |
+| Server state | TanStack Query — **never needed**; Server Components + Server Actions + `router.refresh()` covered it |
+| Dates | `date-fns` — **never needed**; see `lib/dates.ts` and `lib/recurrence.ts` |
 | Validation | Zod v4 |
 | Hosting | Vercel |
 
@@ -90,6 +90,7 @@ Env is read through `lib/env.ts`, which validates lazily with Zod so
   recurrence.ts               computeNextOccurrence(), isDue() — pure
   recurrence.test.ts          node:test unit tests
 /supabase/migrations          numbered SQL, applied in order
+/supabase/seed.sql            demo data; run as postgres, teardown in its header
 middleware.ts                 session refresh + route protection
 ```
 
@@ -172,8 +173,8 @@ where it first matters, as a new numbered migration.
 | 5 | ~~`/tasks/[ref]` is not globally unique.~~ **Fixed in M2** — the route is `/projects/[projectId]/tasks/[ref]` and `getTaskByRef` filters on both. | ✅ M2 |
 | 6 | ~~`assign_task_ref()` is not `security definer`.~~ **Fixed in `0003`**, which also split `tasks_all` into select/insert/update/delete so a `viewer` is genuinely read-only (`can_write_project`) rather than failing later on a NULL `ref`. | ✅ M2 |
 | 7 | ~~`sum(...) filter` returns NULL, and `adhoc_ratio` divides by zero.~~ **Fixed in `0005`**: every aggregate is coalesced in the view and `adhoc_ratio_pct` is now exposed (0001 defined it in the spec but never built it). | ✅ M5 |
-| 8 | `alter publication supabase_realtime add table …` is not idempotent — it errors on replay. | M6 |
-| 9 | `seed_default_statuses` and `sync_task_completion` have mutable `search_path` (advisor WARN). Also revoke EXECUTE on the trigger functions — the advisor flags `assign_task_ref` as RPC-callable by `anon`, which is meaningless (it needs a trigger context) but should not be exposed. | M6 |
+| 8 | ~~`alter publication … add table` is not idempotent.~~ **Fixed in `0006`** with a guarded DO block, so the migration set replays cleanly against a database that already has these tables published. | ✅ M6 |
+| 9 | ~~Mutable `search_path` on the trigger functions.~~ **Fixed in `0006`**, which also revokes EXECUTE on all four trigger functions. Verified the triggers still fire — PostgreSQL checks EXECUTE at CREATE TRIGGER time, not at fire time. | ✅ M6 |
 
 ---
 
@@ -217,3 +218,30 @@ where it first matters, as a new numbered migration.
   `M0 — Foundation: Next.js + Supabase scaffold, auth, protected layout`
 - Never commit `.env.local`, real keys, or `node_modules`.
 - Do not open a PR unless the user asks.
+
+
+---
+
+## 11. Status
+
+All six milestones are implemented on `claude/app-setup-m0-85feb5`. Every issue
+in §8 is closed. Migrations `0001`–`0006` are applied to the Supabase project.
+
+**Not built, deliberately** — `spec.md` §6 lists these routes but no milestone's
+"done when" requires them, so they were never in scope:
+
+- `/projects/[projectId]/list` — flat sortable table
+- `/projects/[projectId]/settings` — project name/key/columns editing (labels
+  and members are editable from the board and `/` respectively)
+- `/my-tasks` — cross-project view grouped Overdue / Today / This week / Later
+
+**Known limitations, all deliberate:**
+
+- Adding a workspace member requires them to already have an account. Pending
+  email invitations need an invitations table and email delivery, which
+  `spec.md` §2 puts out of MVP scope.
+- Estimating a parent *and* its subtasks double-counts in Workload (see §8 #3).
+- `isOverdue` compares UTC dates. A team spread across timezones would want it
+  evaluated in each viewer's `profiles.timezone`.
+- Vercel runs cron only on **production** deployments, so the nightly generator
+  starts when the branch reaches `main`.
