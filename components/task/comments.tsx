@@ -27,30 +27,30 @@ export function Comments({
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-medium text-slate-900">
+      <h3 className="text-xs font-semibold uppercase tracking-wider text-subtle">
         Comments {comments.length > 0 ? `(${comments.length})` : ''}
       </h3>
 
       {comments.length > 0 ? (
         <ul className="space-y-3">
           {comments.map((comment) => (
-            <li key={comment.id} className="rounded-lg bg-slate-50 p-3">
+            <li key={comment.id} className="rounded-xl border border-line bg-elevated p-3">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-sm font-medium text-slate-900">
+                <span className="text-sm font-medium text-fg">
                   {comment.author_name}
                 </span>
-                <span className="text-xs text-slate-400">
+                <span className="text-xs text-subtle">
                   {formatTimestamp(comment.created_at)}
                 </span>
               </div>
-              <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{comment.body}</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-muted">{comment.body}</p>
               {comment.author_id === currentUserId ? (
                 <form action={deleteCommentAction} className="mt-1">
                   <input type="hidden" name="projectId" value={projectId} />
                   <input type="hidden" name="commentId" value={comment.id} />
                   <button
                     type="submit"
-                    className="text-xs text-slate-400 hover:text-red-600 hover:underline"
+                    className="text-xs text-subtle hover:text-danger hover:underline"
                   >
                     Delete
                   </button>
@@ -60,7 +60,7 @@ export function Comments({
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-slate-500">No comments yet.</p>
+        <p className="text-xs text-subtle">No comments yet.</p>
       )}
 
       <form
@@ -78,13 +78,13 @@ export function Comments({
           rows={2}
           required
           placeholder="Add a comment"
-          className="w-full rounded-md border border-slate-300 px-2.5 py-1.5 text-sm
-                     focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+          className="w-full rounded-md border border-line px-2.5 py-1.5 text-sm
+                     focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15"
         />
         <FormError message={state.error} />
         <button
           type="submit"
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-elevated hover:text-fg"
         >
           Comment
         </button>

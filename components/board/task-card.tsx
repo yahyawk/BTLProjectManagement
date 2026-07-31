@@ -1,112 +1,95 @@
 import Link from 'next/link'
 
+import { Avatar, Chip, LabelChip, PriorityBadge, WorkTypeBadge } from '@/components/ui/badge'
+import { IconAlert, IconClock } from '@/components/ui/icons'
 import { formatDate, isOverdue } from '@/lib/dates'
 import type { BoardTask } from '@/lib/queries/tasks'
-import type { PriorityLevel } from '@/lib/types'
-
-const priorityStyles: Record<PriorityLevel, string> = {
-  urgent: 'bg-red-100 text-red-700',
-  high: 'bg-orange-100 text-orange-700',
-  medium: 'bg-slate-100 text-slate-600',
-  low: 'bg-slate-100 text-slate-500',
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).slice(0, 2)
-  return parts.map((p) => p[0]?.toUpperCase() ?? '').join('') || '?'
-}
 
 /**
  * Ad-hoc work must be visually distinct from recurring everywhere it appears
- * (spec.md §5.2) — hence the accent border and badge, coloured from the
- * `--color-adhoc` / `--color-recurring` tokens.
+ * (spec.md §5.2). Here that is a full-height accent spine down the left edge
+ * plus the badge — colour alone is never the only signal, so the distinction
+ * survives colour-blindness and greyscale printing.
  */
 export function TaskCardBody({
   task,
   statusCategory,
   assigneeName,
+  dragging = false,
 }: {
   task: BoardTask
   statusCategory: string
   assigneeName?: string
+  dragging?: boolean
 }) {
   const isAdhoc = task.work_type === 'adhoc'
   const overdue = isOverdue(task.due_date, statusCategory)
+  const done = statusCategory === 'done'
 
   return (
-    <div
-      className={`rounded-lg border border-l-4 bg-white p-3 shadow-sm ${
-        isAdhoc ? 'border-l-adhoc' : 'border-l-recurring'
-      } ${overdue ? 'border-red-300' : 'border-slate-200'}`}
+    <article
+      className={`group relative overflow-hidden rounded-xl border bg-surface p-3 pl-4
+                  transition-all duration-150
+                  ${
+                    dragging
+                      ? 'border-accent/40 shadow-drag'
+                      : 'border-line shadow-card hover:-translate-y-px hover:border-line-strong hover:shadow-pop'
+                  }`}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-xs font-medium text-slate-500">{task.ref}</span>
-        <span
-          className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-            isAdhoc ? 'bg-adhoc/15 text-adhoc' : 'bg-recurring/15 text-recurring'
-          }`}
-        >
-          {isAdhoc ? 'Ad-hoc' : 'Recurring'}
-        </span>
+      {/* Accent spine: the work-type signal that survives at a glance. */}
+      <span
+        aria-hidden
+        className={`absolute inset-y-0 left-0 w-1 ${isAdhoc ? 'bg-adhoc' : 'bg-recurring'}`}
+      />
+
+      <div className="flex items-start justify-between gap-2">
+        <span className="font-mono text-[11px] font-medium text-subtle">{task.ref}</span>
+        <WorkTypeBadge workType={task.work_type} size="sm" />
       </div>
 
-      <p className="mt-1.5 text-sm font-medium text-slate-900">{task.title}</p>
+      <h3
+        className={`mt-1.5 text-sm font-medium leading-snug ${
+          done ? 'text-muted line-through' : 'text-fg'
+        }`}
+      >
+        {task.title}
+      </h3>
 
       {task.labels.length > 0 ? (
         <div className="mt-2 flex flex-wrap gap-1">
           {task.labels.map((label) => (
-            <span
-              key={label.id}
-              className="rounded px-1.5 py-0.5 text-[11px] font-medium text-white"
-              style={{ backgroundColor: label.color }}
-            >
-              {label.name}
-            </span>
+            <LabelChip key={label.id} name={label.name} color={label.color} />
           ))}
         </div>
       ) : null}
 
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <span
-          className={`rounded px-1.5 py-0.5 text-[11px] font-medium capitalize ${
-            priorityStyles[task.priority]
-          }`}
-        >
-          {task.priority}
-        </span>
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        <PriorityBadge priority={task.priority} />
 
         {task.due_date ? (
-          <span
-            className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${
-              overdue ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'
-            }`}
-            title={overdue ? 'Overdue' : 'Due date'}
-          >
-            {overdue ? 'Overdue · ' : ''}
+          <Chip tone={overdue ? 'danger' : 'neutral'} title={overdue ? 'Overdue' : 'Due date'}>
+            {overdue ? <IconAlert className="size-3" /> : <IconClock className="size-3" />}
             {formatDate(task.due_date)}
-          </span>
+          </Chip>
         ) : null}
 
         {task.estimate_hours !== null ? (
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-600">
-            {task.estimate_hours}h
-          </span>
+          <Chip title={`${task.estimate_hours} hours estimated`}>{task.estimate_hours}h</Chip>
         ) : null}
 
         {assigneeName ? (
-          <span
-            className="ml-auto grid size-6 place-items-center rounded-full bg-slate-200 text-[10px] font-semibold text-slate-700"
-            title={assigneeName}
-          >
-            {initials(assigneeName)}
+          <span className="ml-auto">
+            <Avatar name={assigneeName} seed={task.assignee_id ?? assigneeName} size="xs" />
           </span>
         ) : null}
       </div>
 
       {task.requested_by ? (
-        <p className="mt-1.5 truncate text-[11px] text-slate-500">from {task.requested_by}</p>
+        <p className="mt-2 truncate border-t border-line pt-2 text-[11px] text-subtle">
+          Requested by <span className="text-muted">{task.requested_by}</span>
+        </p>
       ) : null}
-    </div>
+    </article>
   )
 }
 
@@ -122,11 +105,12 @@ export function TaskCardLink({
   assigneeName?: string
 }) {
   return (
-    <Link
-      href={`/projects/${projectId}/tasks/${task.ref}` as never}
-      className="block rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
-    >
-      <TaskCardBody task={task} statusCategory={statusCategory} assigneeName={assigneeName} />
+    <Link href={`/projects/${projectId}/tasks/${task.ref}` as never} className="block rounded-xl">
+      <TaskCardBody
+        task={task}
+        statusCategory={statusCategory}
+        assigneeName={assigneeName}
+      />
     </Link>
   )
 }

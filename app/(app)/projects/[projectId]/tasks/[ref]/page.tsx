@@ -14,11 +14,11 @@ export default async function TaskPage({
     <div className="max-w-2xl space-y-4">
       <Link
         href={`/projects/${projectId}/board` as never}
-        className="inline-block text-sm text-indigo-600 hover:underline"
+        className="inline-block text-sm text-accent hover:underline"
       >
         ← Back to board
       </Link>
-      <div className="rounded-xl border border-slate-200 bg-white p-6">
+      <div className="rounded-xl border border-line bg-surface p-6">
         <TaskDetail projectId={projectId} taskRef={decodeURIComponent(ref)} />
       </div>
     </div>

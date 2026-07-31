@@ -8,7 +8,7 @@ import { listLabels } from '@/lib/queries/labels'
 import { canWriteProject, getProject } from '@/lib/queries/projects'
 import { listStatuses } from '@/lib/queries/statuses'
 
-export const metadata = { title: 'Settings · Teamflow' }
+export const metadata = { title: 'Settings · BTL' }
 
 export default async function SettingsPage({
   params,
@@ -26,7 +26,7 @@ export default async function SettingsPage({
 
   if (!projectResult.ok) {
     return (
-      <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <p className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
         Could not load settings: {projectResult.error}
       </p>
     )
@@ -35,7 +35,7 @@ export default async function SettingsPage({
 
   if (!canWrite) {
     return (
-      <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+      <p className="rounded-md border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
         You have view-only access to this project, so its settings cannot be changed.
       </p>
     )
@@ -64,9 +64,9 @@ export default async function SettingsPage({
         title="Members"
         description="Access is granted at the workspace level, so everyone in the workspace can see this project."
       >
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-muted">
           Add or remove people from the{' '}
-          <Link href="/" className="text-indigo-600 hover:underline">
+          <Link href="/" className="text-accent hover:underline">
             workspace home
           </Link>
           . Per-project narrowing exists in the schema (<code>project_members</code>) but is

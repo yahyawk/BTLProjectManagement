@@ -32,9 +32,9 @@ export function Checklist({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-slate-900">Checklist</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-subtle">Checklist</h3>
         {items.length > 0 ? (
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-subtle">
             {done} / {items.length}
           </span>
         ) : null}
@@ -43,14 +43,14 @@ export function Checklist({
       {items.length > 0 ? (
         <>
           <div
-            className="h-1 overflow-hidden rounded-full bg-slate-200"
+            className="h-1 overflow-hidden rounded-full bg-elevated"
             role="progressbar"
             aria-valuenow={done}
             aria-valuemin={0}
             aria-valuemax={items.length}
           >
             <div
-              className="h-full rounded-full bg-emerald-500 transition-all"
+              className="h-full rounded-full bg-success/100 transition-all"
               style={{ width: `${(done / items.length) * 100}%` }}
             />
           </div>
@@ -67,15 +67,15 @@ export function Checklist({
                     aria-label={item.is_done ? 'Mark not done' : 'Mark done'}
                     className={`grid size-4 shrink-0 place-items-center rounded border text-[10px] ${
                       item.is_done
-                        ? 'border-emerald-500 bg-emerald-500 text-white'
-                        : 'border-slate-300 bg-white'
+                        ? 'border-success bg-success/100 text-white'
+                        : 'border-line bg-surface'
                     } ${canWrite ? '' : 'cursor-not-allowed opacity-60'}`}
                   >
                     {item.is_done ? '✓' : ''}
                   </button>
                   <span
                     className={`min-w-0 flex-1 truncate text-sm ${
-                      item.is_done ? 'text-slate-400 line-through' : 'text-slate-800'
+                      item.is_done ? 'text-subtle line-through' : 'text-fg'
                     }`}
                   >
                     {item.content}
@@ -88,7 +88,7 @@ export function Checklist({
                     <button
                       type="submit"
                       aria-label="Delete item"
-                      className="rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                      className="rounded px-1 text-xs text-subtle hover:bg-elevated hover:text-danger"
                     >
                       ✕
                     </button>
@@ -99,7 +99,7 @@ export function Checklist({
           </ul>
         </>
       ) : (
-        <p className="text-xs text-slate-500">No checklist items yet.</p>
+        <p className="text-xs text-subtle">No checklist items yet.</p>
       )}
 
       {canWrite ? (
@@ -118,12 +118,12 @@ export function Checklist({
             placeholder="Add an item"
             required
             maxLength={200}
-            className="min-w-0 flex-1 rounded-md border border-slate-300 px-2.5 py-1.5 text-sm
-                       focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+            className="min-w-0 flex-1 rounded-md border border-line px-2.5 py-1.5 text-sm
+                       focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15"
           />
           <button
             type="submit"
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-elevated hover:text-fg"
           >
             Add
           </button>

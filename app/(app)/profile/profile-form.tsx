@@ -59,22 +59,22 @@ export function ProfileForm({ profile }: { profile: Profile }) {
           required
           errors={state.fieldErrors?.weeklyCapacityHours}
         />
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-subtle">
           The denominator for every utilisation figure on the Workload view. Part-timers
           should be below 40.
         </p>
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="timezone" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="timezone" className="block text-sm font-medium text-muted">
           Timezone
         </label>
         <select
           id="timezone"
           name="timezone"
           defaultValue={profile.timezone}
-          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
-                     focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm
+                     focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15"
         >
           {(TIMEZONES.includes(profile.timezone)
             ? TIMEZONES

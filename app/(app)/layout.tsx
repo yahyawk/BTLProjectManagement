@@ -1,20 +1,15 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 
-import { signOutAction } from '../(auth)/actions'
+import { MobileNav, Sidebar } from '@/components/shell/sidebar'
+import { Avatar } from '@/components/ui/badge'
+import { IconLogout } from '@/components/ui/icons'
+import { ThemeToggle } from '@/components/ui/theme-toggle'
+import { getMyProfile } from '@/lib/queries/profiles'
+import { listProjects } from '@/lib/queries/projects'
+import { listMyWorkspaces } from '@/lib/queries/workspaces'
 import { createClient } from '@/lib/supabase/server'
-
-function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href as never}
-      className="rounded-md px-2.5 py-1.5 text-sm font-medium text-slate-600
-                 transition hover:bg-slate-100 hover:text-slate-900"
-    >
-      {children}
-    </Link>
-  )
-}
+import { signOutAction } from '../(auth)/actions'
 
 /**
  * The protected shell. middleware.ts already redirects anonymous requests,
@@ -31,41 +26,74 @@ export default async function AppLayout({
 
   if (!user) redirect('/login')
 
+  // The rail lists the active workspace's projects. Failures here degrade to
+  // an empty rail rather than taking the whole app down.
+  const [workspacesResult, profileResult] = await Promise.all([
+    listMyWorkspaces(),
+    getMyProfile(),
+  ])
+
+  const workspaces = workspacesResult.ok ? workspacesResult.data : []
+  const activeWorkspace = workspaces[0]
+  const projectsResult = activeWorkspace ? await listProjects(activeWorkspace.id) : null
+  const projects = projectsResult?.ok ? projectsResult.data : []
+
+  const displayName = profileResult.ok && profileResult.data
+    ? profileResult.data.full_name || user.email!
+    : user.email!
+
   return (
-    <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-6">
-            <Link href="/" className="font-semibold tracking-tight text-slate-900">
-              Teamflow
-            </Link>
-            <nav className="flex items-center gap-1" aria-label="Main">
-              <NavLink href="/">Projects</NavLink>
-              <NavLink href="/my-tasks">My tasks</NavLink>
-              <NavLink href="/workload">Workload</NavLink>
-              <NavLink href="/reports">Reports</NavLink>
-            </nav>
+    <div className="flex min-h-dvh">
+      <Sidebar
+        workspaceName={activeWorkspace?.name ?? 'No workspace'}
+        projects={projects.map((p) => ({
+          id: p.id,
+          name: p.name,
+          key: p.key,
+          color: p.color,
+        }))}
+      />
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3
+                           border-b border-line bg-surface/85 px-4 backdrop-blur-md">
+          <div className="min-w-0 md:hidden">
+            <span className="text-sm font-semibold text-fg">BTL</span>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="hidden md:block" />
+
+          <div className="flex items-center gap-1.5">
+            <ThemeToggle />
             <Link
               href="/profile"
-              className="text-sm text-slate-500 hover:text-slate-900 hover:underline"
+              className="flex items-center gap-2 rounded-lg py-1 pl-1 pr-2 transition-colors hover:bg-elevated"
+              title="Your profile"
             >
-              {user.email}
+              <Avatar name={displayName} seed={user.id} size="sm" />
+              <span className="hidden max-w-40 truncate text-xs font-medium text-muted sm:block">
+                {displayName}
+              </span>
             </Link>
             <form action={signOutAction}>
               <button
                 type="submit"
-                className="rounded-md border border-slate-300 px-3 py-1.5 text-sm
-                           font-medium text-slate-700 transition hover:bg-slate-100"
+                aria-label="Sign out"
+                title="Sign out"
+                className="grid size-8 place-items-center rounded-lg text-muted
+                           transition-colors hover:bg-elevated hover:text-danger"
               >
-                Sign out
+                <IconLogout className="size-4" />
               </button>
             </form>
           </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        </header>
+
+        <MobileNav />
+
+        <main className="mx-auto w-full max-w-[1400px] flex-1 animate-fade px-4 py-6 md:px-6 md:py-8">
+          {children}
+        </main>
+      </div>
     </div>
   )
 }

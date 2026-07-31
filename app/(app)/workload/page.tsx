@@ -1,11 +1,12 @@
 import Link from 'next/link'
 
+import { PageHeader, Stat } from '@/components/ui/panel'
 import { WorkloadGrid, WorkloadLegend } from '@/components/workload/workload-grid'
 import { todayIso } from '@/lib/dates'
 import { getWorkloadGrid } from '@/lib/queries/workload'
 import { listMyWorkspaces } from '@/lib/queries/workspaces'
 
-export const metadata = { title: 'Workload · Teamflow' }
+export const metadata = { title: 'Workload' }
 
 const WEEK_OPTIONS = [4, 6, 12]
 
@@ -25,8 +26,8 @@ export default async function WorkloadPage({
   const workspaces = workspacesResult.data
   if (workspaces.length === 0) {
     return (
-      <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-        Create a workspace first — <Link href="/" className="text-indigo-600 hover:underline">go home</Link>.
+      <p className="surface-card border-dashed px-6 py-12 text-center text-sm text-muted">
+        Create a workspace first — <Link href="/" className="text-accent hover:underline">go home</Link>.
       </p>
     )
   }
@@ -55,39 +56,46 @@ export default async function WorkloadPage({
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Workload</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {active.name} · next {weeks} weeks
-            {totalHours > 0 ? (
-              <>
-                {' '}
-                · {Math.round((totals.adhoc / totalHours) * 100)}% of planned hours are
-                unplanned work
-              </>
-            ) : null}
-          </p>
-        </div>
-        <nav className="flex gap-1 rounded-md bg-slate-100 p-0.5" aria-label="Week range">
-          {WEEK_OPTIONS.map((option) => (
-            <Link
-              key={option}
-              href={{ pathname: '/workload', query: { ws: active.id, weeks: option } }}
-              className={`rounded px-2.5 py-1 text-xs font-medium transition ${
-                option === weeks
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              {option}w
-            </Link>
-          ))}
-        </nav>
-      </header>
+      <PageHeader
+        title="Workload"
+        subtitle={`${active.name} · next ${weeks} weeks`}
+        actions={
+          <nav className="flex gap-0.5 rounded-lg bg-elevated p-0.5" aria-label="Week range">
+            {WEEK_OPTIONS.map((option) => (
+              <Link
+                key={option}
+                href={{ pathname: '/workload', query: { ws: active.id, weeks: option } }}
+                className={`rounded-md px-2.5 py-1 text-xs font-medium transition-all ${
+                  option === weeks
+                    ? 'bg-surface text-fg shadow-card'
+                    : 'text-muted hover:text-fg'
+                }`}
+              >
+                {option}w
+              </Link>
+            ))}
+          </nav>
+        }
+      />
+
+      <div className="flex flex-wrap items-stretch gap-3">
+        <Stat label="Recurring" value={`${totals.recurring}h`} accent="recurring" />
+        <Stat label="Ad-hoc" value={`${totals.adhoc}h`} accent="adhoc" />
+        <Stat
+          label="Unplanned share"
+          value={totalHours > 0 ? `${Math.round((totals.adhoc / totalHours) * 100)}%` : '—'}
+          hint="Of all planned hours"
+        />
+        <Stat
+          label="Over capacity"
+          value={overCapacity.length}
+          accent={overCapacity.length > 0 ? 'danger' : 'success'}
+          hint={overCapacity.length > 0 ? 'People with a red week' : 'Everyone within capacity'}
+        />
+      </div>
 
       {overCapacity.length > 0 ? (
-        <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+        <p className="animate-pop rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
           <strong>
             {overCapacity.length} {overCapacity.length === 1 ? 'person is' : 'people are'} over
             capacity
@@ -99,9 +107,9 @@ export default async function WorkloadPage({
       <WorkloadLegend />
       <WorkloadGrid grid={grid} />
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-subtle">
         Capacity comes from each person&apos;s profile.{' '}
-        <Link href="/profile" className="text-indigo-600 hover:underline">
+        <Link href="/profile" className="text-accent hover:underline">
           Edit yours
         </Link>
         .
@@ -112,7 +120,7 @@ export default async function WorkloadPage({
 
 function ErrorPanel({ message }: { message: string }) {
   return (
-    <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+    <p className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
       Could not load workload: {message}
     </p>
   )

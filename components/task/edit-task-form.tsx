@@ -3,9 +3,10 @@
 import { useActionState, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-import { Field, FormError, SubmitButton } from '@/components/ui/field'
+import { Button, Field, FormError, SubmitButton, TextareaField } from '@/components/ui/field'
 import { Notice } from '@/components/ui/panel'
 import { CommonTaskFields, LabelPicker, WorkTypeChoice } from '@/components/board/task-fields'
+import { IconTrash } from '@/components/ui/icons'
 import {
   deleteTaskAction,
   updateTaskAction,
@@ -63,23 +64,15 @@ export function EditTaskForm({
 
         <LabelPicker labels={labels} selectedIds={task.labels.map((l) => l.id)} />
 
-        <div className="space-y-1.5">
-          <label htmlFor="description" className="block text-sm font-medium text-slate-700">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            rows={3}
-            defaultValue={task.description ?? ''}
-            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
-                       text-slate-900 focus:border-indigo-500 focus:outline-none
-                       focus:ring-2 focus:ring-indigo-500/30"
-          />
-        </div>
+        <TextareaField
+          label="Description"
+          name="description"
+          rows={3}
+          defaultValue={task.description ?? ''}
+        />
 
         {workType === 'adhoc' ? (
-          <div className="space-y-4 rounded-lg border border-adhoc/30 bg-adhoc/5 p-3">
+          <div className="animate-rise space-y-3 rounded-xl border border-adhoc/30 bg-adhoc/8 p-3">
             <Field
               label="Requested by"
               name="requestedBy"
@@ -125,35 +118,27 @@ function DeleteTaskForm({
   }, [state.notice, projectId, router])
 
   return (
-    <div className="border-t border-slate-200 pt-4">
+    <div className="border-t border-line pt-4">
       <FormError message={state.error} />
       {confirming ? (
         <form action={formAction} className="flex flex-wrap items-center gap-3">
           <input type="hidden" name="projectId" value={projectId} />
           <input type="hidden" name="taskId" value={taskId} />
-          <p className="text-sm text-slate-700">
-            Delete {taskRef} and its subtasks permanently?
-          </p>
-          <button
-            type="submit"
-            className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
-          >
+          <p className="text-sm text-fg">Delete {taskRef} and its subtasks permanently?</p>
+          <Button type="submit" variant="danger" size="sm">
             Delete
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirming(false)}
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
-          >
+          </Button>
+          <Button type="button" size="sm" onClick={() => setConfirming(false)}>
             Cancel
-          </button>
+          </Button>
         </form>
       ) : (
         <button
           type="button"
           onClick={() => setConfirming(true)}
-          className="text-sm font-medium text-red-600 hover:underline"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-danger hover:underline"
         >
+          <IconTrash className="size-4" />
           Delete task
         </button>
       )}

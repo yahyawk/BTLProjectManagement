@@ -1,9 +1,12 @@
 import Link from 'next/link'
 
+import { Chip, LabelChip, WorkTypeBadge } from '@/components/ui/badge'
+import { IconInbox } from '@/components/ui/icons'
+import { EmptyState, PageHeader, Stat } from '@/components/ui/panel'
 import { formatDate } from '@/lib/dates'
 import { getMyTasks, type MyTask, type MyTaskBuckets } from '@/lib/queries/tasks'
 
-export const metadata = { title: 'My tasks · Teamflow' }
+export const metadata = { title: 'My tasks' }
 
 const GROUPS: {
   key: keyof MyTaskBuckets
@@ -22,7 +25,7 @@ export default async function MyTasksPage() {
 
   if (!result.ok) {
     return (
-      <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <p className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
         Could not load your tasks: {result.error}
       </p>
     )
@@ -36,32 +39,34 @@ export default async function MyTasksPage() {
   if (all.length === 0) {
     return (
       <div className="space-y-5">
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">My tasks</h1>
-        <p className="rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">
-          Nothing is assigned to you right now. Tasks appear here as soon as someone puts
-          your name on one.
-        </p>
+        <PageHeader title="My tasks" />
+        <EmptyState
+          icon={<IconInbox className="size-5" />}
+          title="Nothing assigned to you"
+          description="Tasks appear here as soon as someone puts your name on one."
+        />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900">My tasks</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {all.length} open across every project · {hours}h estimated ·{' '}
-          {Math.round((adhoc / all.length) * 100)}% unplanned
-          {buckets.overdue.length > 0 ? (
-            <>
-              {' · '}
-              <span className="font-medium text-red-600">
-                {buckets.overdue.length} overdue
-              </span>
-            </>
-          ) : null}
-        </p>
-      </header>
+      <PageHeader title="My tasks" subtitle="Everything assigned to you, across every project." />
+
+      <div className="flex flex-wrap items-stretch gap-3">
+        <Stat label="Open" value={all.length} />
+        <Stat label="Estimated" value={`${hours}h`} />
+        <Stat
+          label="Unplanned"
+          value={`${Math.round((adhoc / all.length) * 100)}%`}
+          accent="adhoc"
+        />
+        <Stat
+          label="Overdue"
+          value={buckets.overdue.length}
+          accent={buckets.overdue.length > 0 ? 'danger' : 'success'}
+        />
+      </div>
 
       {GROUPS.map((group) => {
         const tasks = buckets[group.key]
@@ -70,20 +75,20 @@ export default async function MyTasksPage() {
         return (
           <section key={group.key} className="space-y-2">
             <h2
-              className={`text-sm font-medium ${
+              className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider ${
                 group.tone === 'danger'
-                  ? 'text-red-700'
+                  ? 'text-danger'
                   : group.tone === 'warn'
-                    ? 'text-amber-700'
-                    : group.tone === 'muted'
-                      ? 'text-slate-500'
-                      : 'text-slate-900'
+                    ? 'text-warning'
+                    : 'text-subtle'
               }`}
             >
-              {group.title}{' '}
-              <span className="font-normal text-slate-400">({tasks.length})</span>
+              {group.title}
+              <span className="rounded-md bg-elevated px-1.5 py-0.5 text-[10px] tabular-nums text-muted ring-1 ring-inset ring-line">
+                {tasks.length}
+              </span>
             </h2>
-            <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
+            <ul className="surface-card divide-y divide-[var(--border)]">
               {tasks.map((task) => (
                 <MyTaskRow key={task.id} task={task} overdue={group.key === 'overdue'} />
               ))}
@@ -102,43 +107,34 @@ function MyTaskRow({ task, overdue }: { task: MyTask; overdue: boolean }) {
     <li>
       <Link
         href={`/projects/${task.project_id}/tasks/${task.ref}` as never}
-        className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 hover:bg-slate-50"
+        className="group flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3 transition-colors hover:bg-elevated"
       >
         <span
           aria-hidden
-          className={`size-2 shrink-0 rounded-full ${isAdhoc ? 'bg-adhoc' : 'bg-recurring'}`}
-          title={isAdhoc ? 'Ad-hoc' : 'Recurring'}
+          className={`h-8 w-1 shrink-0 rounded-full ${isAdhoc ? 'bg-adhoc' : 'bg-recurring'}`}
         />
         <span
-          className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] font-medium text-slate-600"
+          className="shrink-0 rounded-md bg-elevated px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted ring-1 ring-inset ring-line"
           title={task.project_name}
         >
           {task.ref}
         </span>
-        <span className="min-w-0 flex-1 truncate text-sm text-slate-900">{task.title}</span>
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-fg">{task.title}</span>
+
+        <span className="hidden shrink-0 md:block">
+          <WorkTypeBadge workType={task.work_type} size="sm" />
+        </span>
 
         {task.labels.slice(0, 2).map((label) => (
-          <span
-            key={label.id}
-            className="hidden rounded px-1.5 py-0.5 text-[11px] font-medium text-white sm:inline"
-            style={{ backgroundColor: label.color }}
-          >
-            {label.name}
+          <span key={label.id} className="hidden shrink-0 lg:block">
+            <LabelChip name={label.name} color={label.color} />
           </span>
         ))}
 
-        <span className="shrink-0 text-xs text-slate-500">{task.status_name}</span>
-        {task.estimate_hours !== null ? (
-          <span className="shrink-0 text-xs text-slate-500">{task.estimate_hours}h</span>
-        ) : null}
+        <Chip>{task.status_name}</Chip>
+        {task.estimate_hours !== null ? <Chip>{task.estimate_hours}h</Chip> : null}
         {task.due_date ? (
-          <span
-            className={`shrink-0 text-xs font-medium ${
-              overdue ? 'text-red-600' : 'text-slate-500'
-            }`}
-          >
-            {formatDate(task.due_date)}
-          </span>
+          <Chip tone={overdue ? 'danger' : 'neutral'}>{formatDate(task.due_date)}</Chip>
         ) : null}
       </Link>
     </li>

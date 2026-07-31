@@ -3,22 +3,20 @@
 import { useActionState } from 'react'
 
 import { Field, FormError, SubmitButton } from '@/components/ui/field'
+import { IconCheck } from '@/components/ui/icons'
 import { signupAction, type AuthFormState } from '../actions'
 
 export function SignupForm() {
-  const [state, formAction] = useActionState<AuthFormState, FormData>(
-    signupAction,
-    {},
-  )
+  const [state, formAction] = useActionState<AuthFormState, FormData>(signupAction, {})
 
   if (state.notice) {
     return (
-      <p
-        role="status"
-        className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800"
-      >
-        {state.notice}
-      </p>
+      <div className="animate-pop space-y-3 text-center">
+        <span className="mx-auto grid size-10 place-items-center rounded-full bg-success/12 text-success">
+          <IconCheck className="size-5" />
+        </span>
+        <p className="text-sm text-fg">{state.notice}</p>
+      </div>
     )
   }
 
@@ -29,6 +27,7 @@ export function SignupForm() {
         label="Full name"
         name="fullName"
         type="text"
+        placeholder="Ada Lovelace"
         autoComplete="name"
         required
         errors={state.fieldErrors?.fullName}
@@ -37,6 +36,7 @@ export function SignupForm() {
         label="Email"
         name="email"
         type="email"
+        placeholder="you@company.com"
         autoComplete="email"
         required
         errors={state.fieldErrors?.email}
@@ -45,6 +45,7 @@ export function SignupForm() {
         label="Password"
         name="password"
         type="password"
+        placeholder="At least 8 characters"
         autoComplete="new-password"
         minLength={8}
         required

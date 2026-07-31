@@ -130,7 +130,7 @@ export async function listProjectAssignees(
 }
 
 /**
- * Adds an existing Teamflow user to a workspace by email, via the
+ * Adds an existing BTL user to a workspace by email, via the
  * `add_workspace_member_by_email` RPC (migration 0002).
  *
  * The RPC is needed because `profiles_select` only exposes people who already
@@ -159,10 +159,15 @@ export async function addMemberByEmail(input: unknown): Promise<QueryResult<null
   if (error) {
     // The RPC raises these deliberately; surface them as-is because they are
     // written for humans. Anything else is a bug, not a user error.
+    //
+    // The matched string is the one raised by migration 0002, which is
+    // immutable — so it still says "Teamflow" even though the product is now
+    // BTL. Matching the old wording here is correct; rewriting the migration
+    // would not be.
     if (error.message.includes('No Teamflow account exists')) {
       return {
         ok: false,
-        error: `No Teamflow account exists for ${parsed.data.email}. They need to sign up first.`,
+        error: `No BTL account exists for ${parsed.data.email}. They need to sign up first.`,
       }
     }
     if (error.message.includes('Only workspace owners and admins')) {

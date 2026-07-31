@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { Avatar, Chip, WorkTypeBadge } from '@/components/ui/badge'
 import { Checklist } from '@/components/task/checklist'
 import { TimeLog } from '@/components/task/time-log'
 import { Comments } from '@/components/task/comments'
@@ -34,7 +35,7 @@ export async function TaskDetail({
 
   if (!taskResult.ok) {
     return (
-      <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <p className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
         Could not load this task: {taskResult.error}
       </p>
     )
@@ -78,37 +79,38 @@ export async function TaskDetail({
     ? timeResult.data
     : { entries: [], totalHours: 0, myHours: 0 }
 
-  const isAdhoc = task.work_type === 'adhoc'
   const overdue = isOverdue(task.due_date, category)
   const assignee = members.find((m) => m.user_id === task.assignee_id)
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-4 pr-10">
         <div className="min-w-0">
-          <span className="font-mono text-xs font-medium text-slate-500">{task.ref}</span>
-          <h2 className="text-lg font-semibold text-slate-900">{task.title}</h2>
-          <p className="mt-1 text-xs text-slate-500">
-            {assignee ? assignee.full_name : 'Unassigned'}
-            {task.estimate_hours !== null ? ` · ${task.estimate_hours}h estimate` : ''}
+          <div className="flex items-center gap-2">
+            <span className="rounded-md bg-elevated px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted ring-1 ring-inset ring-line">
+              {task.ref}
+            </span>
+            <WorkTypeBadge workType={task.work_type} size="sm" />
+          </div>
+          <h2 className="mt-2 text-lg font-semibold leading-snug text-fg">{task.title}</h2>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {assignee ? (
+              <span className="flex items-center gap-1.5">
+                <Avatar name={assignee.full_name} seed={assignee.user_id} size="xs" />
+                <span className="text-xs text-muted">{assignee.full_name}</span>
+              </span>
+            ) : (
+              <Chip>Unassigned</Chip>
+            )}
+            {task.estimate_hours !== null ? <Chip>{task.estimate_hours}h estimate</Chip> : null}
             {task.due_date ? (
-              <>
-                {' · '}
-                <span className={overdue ? 'font-medium text-red-600' : undefined}>
-                  {overdue ? 'Overdue — was due ' : 'Due '}
-                  {formatDate(task.due_date)}
-                </span>
-              </>
+              <Chip tone={overdue ? 'danger' : 'neutral'}>
+                {overdue ? 'Overdue — was due ' : 'Due '}
+                {formatDate(task.due_date)}
+              </Chip>
             ) : null}
-          </p>
+          </div>
         </div>
-        <span
-          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${
-            isAdhoc ? 'bg-adhoc/15 text-adhoc' : 'bg-recurring/15 text-recurring'
-          }`}
-        >
-          {isAdhoc ? 'Ad-hoc' : 'Recurring'}
-        </span>
       </div>
 
       {canWrite ? (
@@ -181,9 +183,9 @@ function Subtasks({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-slate-900">Subtasks</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-subtle">Subtasks</h3>
         {subtasks.length > 0 ? (
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-subtle">
             {done} / {subtasks.length} done
           </span>
         ) : null}
@@ -195,8 +197,8 @@ function Subtasks({
             <li key={subtask.id}>
               <Link
                 href={`/projects/${projectId}/tasks/${subtask.ref}` as never}
-                className="flex items-center gap-2 rounded-md border border-slate-200 px-2.5 py-1.5
-                           text-sm hover:bg-slate-50"
+                className="flex items-center gap-2 rounded-md border border-line px-2.5 py-1.5
+                           text-sm hover:bg-elevated"
               >
                 <span
                   aria-hidden
@@ -204,16 +206,16 @@ function Subtasks({
                     subtask.work_type === 'adhoc' ? 'bg-adhoc' : 'bg-recurring'
                   }`}
                 />
-                <span className="font-mono text-xs text-slate-500">{subtask.ref}</span>
+                <span className="font-mono text-xs text-subtle">{subtask.ref}</span>
                 <span
                   className={`min-w-0 flex-1 truncate ${
-                    subtask.completed_at ? 'text-slate-400 line-through' : 'text-slate-800'
+                    subtask.completed_at ? 'text-subtle line-through' : 'text-fg'
                   }`}
                 >
                   {subtask.title}
                 </span>
                 {subtask.estimate_hours !== null ? (
-                  <span className="shrink-0 text-xs text-slate-500">
+                  <span className="shrink-0 text-xs text-subtle">
                     {subtask.estimate_hours}h
                   </span>
                 ) : null}
@@ -222,15 +224,15 @@ function Subtasks({
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-slate-500">No subtasks.</p>
+        <p className="text-xs text-subtle">No subtasks.</p>
       )}
 
       {canWrite ? (
-        <details className="rounded-lg border border-slate-200 p-3">
-          <summary className="cursor-pointer text-sm font-medium text-slate-700">
+        <details className="rounded-lg border border-line p-3">
+          <summary className="cursor-pointer text-sm font-medium text-muted">
             Add a subtask
           </summary>
-          <p className="mt-1 mb-3 text-xs text-slate-500">
+          <p className="mt-1 mb-3 text-xs text-subtle">
             Subtasks go one level deep only, and carry their own work type.
           </p>
           <NewTaskForm
@@ -250,12 +252,12 @@ function ReadOnlyDetail({ task }: { task: BoardTask }) {
   return (
     <dl className="space-y-3 text-sm">
       <div>
-        <dt className="text-slate-500">Priority</dt>
-        <dd className="font-medium capitalize text-slate-900">{task.priority}</dd>
+        <dt className="text-subtle">Priority</dt>
+        <dd className="font-medium capitalize text-fg">{task.priority}</dd>
       </div>
       {task.labels.length > 0 ? (
         <div>
-          <dt className="text-slate-500">Labels</dt>
+          <dt className="text-subtle">Labels</dt>
           <dd className="mt-1 flex flex-wrap gap-1">
             {task.labels.map((label) => (
               <span
@@ -271,23 +273,23 @@ function ReadOnlyDetail({ task }: { task: BoardTask }) {
       ) : null}
       {task.description ? (
         <div>
-          <dt className="text-slate-500">Description</dt>
-          <dd className="whitespace-pre-wrap text-slate-900">{task.description}</dd>
+          <dt className="text-subtle">Description</dt>
+          <dd className="whitespace-pre-wrap text-fg">{task.description}</dd>
         </div>
       ) : null}
       {task.requested_by ? (
         <div>
-          <dt className="text-slate-500">Requested by</dt>
-          <dd className="text-slate-900">{task.requested_by}</dd>
+          <dt className="text-subtle">Requested by</dt>
+          <dd className="text-fg">{task.requested_by}</dd>
         </div>
       ) : null}
       {task.source_note ? (
         <div>
-          <dt className="text-slate-500">Source</dt>
-          <dd className="text-slate-900">{task.source_note}</dd>
+          <dt className="text-subtle">Source</dt>
+          <dd className="text-fg">{task.source_note}</dd>
         </div>
       ) : null}
-      <p className="pt-2 text-xs text-slate-500">
+      <p className="pt-2 text-xs text-subtle">
         You have view-only access to this project, but you can still comment.
       </p>
     </dl>

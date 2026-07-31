@@ -3,15 +3,15 @@ import { FilterBar } from '@/components/board/filter-bar'
 import { LabelsPanel } from '@/components/board/labels-panel'
 import { NewTaskForm } from '@/components/board/new-task-form'
 import { RealtimeBoard } from '@/components/board/realtime-board'
-import { Panel } from '@/components/ui/panel'
+import { Panel, Stat } from '@/components/ui/panel'
+import { isOverdue } from '@/lib/dates'
 import { listLabels } from '@/lib/queries/labels'
 import { canWriteProject } from '@/lib/queries/projects'
-import { isOverdue } from '@/lib/dates'
 import { getBoard, type BoardFilters } from '@/lib/queries/tasks'
 import { listProjectAssignees } from '@/lib/queries/workspaces'
 import type { PriorityLevel, WorkType } from '@/lib/types'
 
-export const metadata = { title: 'Board · Teamflow' }
+export const metadata = { title: 'Board' }
 
 const WORK_TYPES: WorkType[] = ['recurring', 'adhoc']
 const PRIORITIES: PriorityLevel[] = ['urgent', 'high', 'medium', 'low']
@@ -55,7 +55,7 @@ export default async function BoardPage({
 
   if (!boardResult.ok) {
     return (
-      <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <p className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
         Could not load the board: {boardResult.error}
       </p>
     )
@@ -84,28 +84,24 @@ export default async function BoardPage({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 rounded-full bg-recurring" />
-          <span className="text-slate-600">{recurring} recurring</span>
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span aria-hidden className="size-2.5 rounded-full bg-adhoc" />
-          <span className="text-slate-600">{adhoc} ad-hoc</span>
-        </span>
-        {total > 0 ? (
-          <span className="text-slate-400">
-            · {Math.round((adhoc / total) * 100)}% unplanned · {estimated}h estimated
-          </span>
-        ) : null}
-        {overdue > 0 ? (
-          <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-            {overdue} overdue
-          </span>
-        ) : null}
-        <span className="ml-auto">
+      <div className="flex flex-wrap items-stretch gap-3">
+        <Stat label="Recurring" value={recurring} accent="recurring" />
+        <Stat label="Ad-hoc" value={adhoc} accent="adhoc" />
+        <Stat
+          label="Unplanned"
+          value={total > 0 ? `${Math.round((adhoc / total) * 100)}%` : '—'}
+          hint="Share of open cards that are interrupts"
+        />
+        <Stat label="Estimated" value={`${estimated}h`} hint="Across all open cards" />
+        <Stat
+          label="Overdue"
+          value={overdue}
+          accent={overdue > 0 ? 'danger' : 'success'}
+          hint={overdue > 0 ? 'Past due and not done' : 'Nothing past due'}
+        />
+        <div className="flex items-center pl-1">
           <RealtimeBoard projectId={projectId} />
-        </span>
+        </div>
       </div>
 
       <FilterBar
@@ -123,7 +119,7 @@ export default async function BoardPage({
       />
 
       {canWrite ? (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-5 lg:grid-cols-2">
           <Panel
             title="New task"
             description="Every task is recurring or ad-hoc. You have to say which."

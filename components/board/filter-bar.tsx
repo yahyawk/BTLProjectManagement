@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { Route } from 'next'
 
+import { IconX } from '@/components/ui/icons'
 import type { WorkspaceMemberRow } from '@/lib/queries/workspaces'
 import type { Label } from '@/lib/types'
 
@@ -40,114 +41,131 @@ export function FilterBar({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
-      <span className="text-xs font-medium text-slate-500">Filter</span>
-
-      <FilterGroup label="Type">
-        <FilterChip href={hrefWith({ workType: undefined })} active={!filters.workType}>
+    <div className="surface-card flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
+      <Group label="Type">
+        <Chip href={hrefWith({ workType: undefined })} active={!filters.workType}>
           All
-        </FilterChip>
-        <FilterChip href={hrefWith({ workType: 'recurring' })} active={filters.workType === 'recurring'}>
+        </Chip>
+        <Chip
+          href={hrefWith({ workType: 'recurring' })}
+          active={filters.workType === 'recurring'}
+          dot="recurring"
+        >
           Recurring
-        </FilterChip>
-        <FilterChip href={hrefWith({ workType: 'adhoc' })} active={filters.workType === 'adhoc'}>
+        </Chip>
+        <Chip
+          href={hrefWith({ workType: 'adhoc' })}
+          active={filters.workType === 'adhoc'}
+          dot="adhoc"
+        >
           Ad-hoc
-        </FilterChip>
-      </FilterGroup>
+        </Chip>
+      </Group>
 
-      <FilterGroup label="Priority">
-        <FilterChip href={hrefWith({ priority: undefined })} active={!filters.priority}>
+      <Group label="Priority">
+        <Chip href={hrefWith({ priority: undefined })} active={!filters.priority}>
           Any
-        </FilterChip>
+        </Chip>
         {(['urgent', 'high', 'medium', 'low'] as const).map((p) => (
-          <FilterChip key={p} href={hrefWith({ priority: p })} active={filters.priority === p}>
+          <Chip key={p} href={hrefWith({ priority: p })} active={filters.priority === p}>
             <span className="capitalize">{p}</span>
-          </FilterChip>
+          </Chip>
         ))}
-      </FilterGroup>
+      </Group>
 
-      <FilterGroup label="Assignee">
-        <FilterChip href={hrefWith({ assigneeId: undefined })} active={!filters.assigneeId}>
+      <Group label="Assignee">
+        <Chip href={hrefWith({ assigneeId: undefined })} active={!filters.assigneeId}>
           Anyone
-        </FilterChip>
-        <FilterChip
+        </Chip>
+        <Chip
           href={hrefWith({ assigneeId: 'unassigned' })}
           active={filters.assigneeId === 'unassigned'}
         >
           Unassigned
-        </FilterChip>
+        </Chip>
         {members.map((member) => (
-          <FilterChip
+          <Chip
             key={member.user_id}
             href={hrefWith({ assigneeId: member.user_id })}
             active={filters.assigneeId === member.user_id}
           >
-            {member.full_name}
-          </FilterChip>
+            {member.full_name.split(' ')[0]}
+          </Chip>
         ))}
-      </FilterGroup>
+      </Group>
 
       {labels.length > 0 ? (
-        <FilterGroup label="Label">
-          <FilterChip href={hrefWith({ labelId: undefined })} active={!filters.labelId}>
+        <Group label="Label">
+          <Chip href={hrefWith({ labelId: undefined })} active={!filters.labelId}>
             Any
-          </FilterChip>
+          </Chip>
           {labels.map((label) => (
-            <FilterChip
+            <Chip
               key={label.id}
               href={hrefWith({ labelId: label.id })}
               active={filters.labelId === label.id}
+              color={label.color}
             >
-              <span
-                aria-hidden
-                className="mr-1 inline-block size-2 rounded-full align-middle"
-                style={{ backgroundColor: label.color }}
-              />
               {label.name}
-            </FilterChip>
+            </Chip>
           ))}
-        </FilterGroup>
+        </Group>
       ) : null}
 
       {active > 0 ? (
         <Link
           href={basePath as Route}
-          className="ml-auto rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:underline"
+          className="ml-auto inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs
+                     font-medium text-accent transition-colors hover:bg-accent-soft"
         >
-          Clear {active} filter{active === 1 ? '' : 's'}
+          <IconX className="size-3" />
+          Clear {active}
         </Link>
       ) : null}
     </div>
   )
 }
 
-function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-1">
-      <span className="sr-only">{label}</span>
-      <div className="flex flex-wrap items-center gap-1 rounded-md bg-slate-100 p-0.5">
+    <div className="flex items-center gap-1.5">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-subtle">
+        {label}
+      </span>
+      <div className="flex flex-wrap items-center gap-0.5 rounded-lg bg-elevated p-0.5">
         {children}
       </div>
     </div>
   )
 }
 
-function FilterChip({
+function Chip({
   href,
   active,
+  dot,
+  color,
   children,
 }: {
   href: Route
   active: boolean
+  dot?: 'recurring' | 'adhoc'
+  color?: string
   children: React.ReactNode
 }) {
   return (
     <Link
       href={href}
-      className={`rounded px-2 py-1 text-xs font-medium transition ${
-        active ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
-      }`}
+      className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium
+                  transition-all duration-150
+                  ${active ? 'bg-surface text-fg shadow-card' : 'text-muted hover:text-fg'}`}
     >
+      {dot === 'recurring' ? (
+        <span aria-hidden className="size-1.5 rounded-full bg-recurring" />
+      ) : dot === 'adhoc' ? (
+        <span aria-hidden className="size-1.5 rounded-full bg-adhoc" />
+      ) : color ? (
+        <span aria-hidden className="size-1.5 rounded-full" style={{ backgroundColor: color }} />
+      ) : null}
       {children}
     </Link>
   )

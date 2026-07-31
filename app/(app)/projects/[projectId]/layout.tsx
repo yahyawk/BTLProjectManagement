@@ -1,19 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { ProjectTabs } from '@/components/shell/project-tabs'
 import { getProject } from '@/lib/queries/projects'
-
-function ProjectTab({ href, children }: { href: string; children: React.ReactNode }) {
-  return (
-    <Link
-      href={href as never}
-      className="-mb-px border-b-2 border-transparent px-3 py-2 text-sm font-medium
-                 text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
-    >
-      {children}
-    </Link>
-  )
-}
 
 /**
  * `modal` is a parallel route slot. Navigating to a task from the board is
@@ -34,7 +23,7 @@ export default async function ProjectLayout({
 
   if (!result.ok) {
     return (
-      <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <p className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
         Could not load this project: {result.error}
       </p>
     )
@@ -47,38 +36,39 @@ export default async function ProjectLayout({
   const project = result.data
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <div className="space-y-5">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <span
             aria-hidden
-            className="size-3 rounded-full"
+            className="size-8 shrink-0 rounded-lg"
             style={{ backgroundColor: project.color }}
           />
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-              {project.name}
-            </h1>
-            <p className="text-xs text-slate-500">
-              <span className="font-mono">{project.key}</span> ·{' '}
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h1 className="truncate text-xl font-semibold tracking-tight text-fg">
+                {project.name}
+              </h1>
+              <span className="shrink-0 rounded-md bg-elevated px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted ring-1 ring-inset ring-line">
+                {project.key}
+              </span>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-subtle">
               {project.task_counter} {project.task_counter === 1 ? 'task' : 'tasks'} created
+              {project.description ? ` · ${project.description}` : ''}
             </p>
           </div>
         </div>
         <Link
           href="/"
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+          className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-medium
+                     text-muted transition-colors hover:bg-elevated hover:text-fg"
         >
           All projects
         </Link>
       </header>
 
-      <nav className="flex gap-1 border-b border-slate-200" aria-label="Project views">
-        <ProjectTab href={`/projects/${projectId}/board`}>Board</ProjectTab>
-        <ProjectTab href={`/projects/${projectId}/list`}>List</ProjectTab>
-        <ProjectTab href={`/projects/${projectId}/recurring`}>Recurring</ProjectTab>
-        <ProjectTab href={`/projects/${projectId}/settings`}>Settings</ProjectTab>
-      </nav>
+      <ProjectTabs projectId={projectId} />
 
       {children}
       {modal}

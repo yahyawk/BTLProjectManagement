@@ -84,7 +84,7 @@ export function TemplateForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <label htmlFor="frequency" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="frequency" className="block text-sm font-medium text-muted">
             Frequency
           </label>
           <select
@@ -93,8 +93,8 @@ export function TemplateForm({
             value={frequency}
             onChange={(e) => setFrequency(e.target.value as RecurrenceRule['frequency'])}
             required
-            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
-                       focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+            className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm
+                       focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15"
           >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
@@ -116,15 +116,15 @@ export function TemplateForm({
 
       {frequency === 'weekly' ? (
         <fieldset>
-          <legend className="block text-sm font-medium text-slate-700">On which days</legend>
+          <legend className="block text-sm font-medium text-muted">On which days</legend>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {WEEKDAYS.map((day) => (
               <label
                 key={day.value}
-                className="cursor-pointer select-none rounded-md border border-slate-300 px-2.5 py-1
-                           text-xs font-medium text-slate-700 transition hover:bg-slate-50
-                           has-[:checked]:border-indigo-400 has-[:checked]:bg-indigo-50
-                           has-[:checked]:text-indigo-700"
+                className="cursor-pointer select-none rounded-md border border-line px-2.5 py-1
+                           text-xs font-medium text-muted transition hover:bg-elevated
+                           has-[:checked]:border-accent has-[:checked]:bg-accent-soft
+                           has-[:checked]:text-accent"
               >
                 <input
                   type="checkbox"
@@ -139,14 +139,14 @@ export function TemplateForm({
             ))}
           </div>
           {state.fieldErrors?.byweekday ? (
-            <p className="mt-1.5 text-sm text-red-600">{state.fieldErrors.byweekday[0]}</p>
+            <p className="mt-1.5 text-sm text-danger">{state.fieldErrors.byweekday[0]}</p>
           ) : null}
         </fieldset>
       ) : null}
 
       {frequency === 'monthly' || frequency === 'quarterly' ? (
         <div className="space-y-1.5">
-          <label htmlFor="bymonthday" className="block text-sm font-medium text-slate-700">
+          <label htmlFor="bymonthday" className="block text-sm font-medium text-muted">
             Day of month
           </label>
           <select
@@ -154,8 +154,8 @@ export function TemplateForm({
             name="bymonthday"
             value={bymonthday}
             onChange={(e) => setBymonthday(e.target.value)}
-            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
-                       focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+            className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm
+                       focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15"
           >
             <option value="">Same day as the start date</option>
             {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
@@ -165,7 +165,7 @@ export function TemplateForm({
             ))}
             <option value="-1">Last day of the month</option>
           </select>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-subtle">
             A day past the end of a short month clamps to its last day — the 31st becomes
             28 Feb, not 3 Mar.
           </p>
@@ -204,7 +204,7 @@ export function TemplateForm({
             onChange={(e) => setLeadTimeDays(Number(e.target.value))}
             errors={state.fieldErrors?.leadTimeDays}
           />
-          <p className="mt-1 text-xs text-slate-500">
+          <p className="mt-1 text-xs text-subtle">
             How far ahead the task appears. The Monday report can land the Thursday before.
           </p>
         </div>
@@ -236,28 +236,28 @@ export function TemplateForm({
         </SelectField>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <p className="text-xs font-medium text-slate-700">Next occurrences</p>
+      <div className="rounded-lg border border-line bg-elevated p-3">
+        <p className="text-xs font-medium text-muted">Next occurrences</p>
         {preview.length > 0 ? (
           <>
             <ul className="mt-1.5 flex flex-wrap gap-1.5">
               {preview.map((date) => (
                 <li
                   key={date}
-                  className="rounded bg-white px-2 py-0.5 text-xs font-medium text-slate-700"
+                  className="rounded bg-surface px-2 py-0.5 text-xs font-medium text-muted"
                 >
                   {formatDate(date)}
                 </li>
               ))}
             </ul>
-            <p className="mt-2 text-xs text-slate-500">
+            <p className="mt-2 text-xs text-subtle">
               The first task will be created on{' '}
               <strong>{formatDate(addDays(preview[0], -leadTimeDays))}</strong>, {leadTimeDays}{' '}
               day{leadTimeDays === 1 ? '' : 's'} before it is due.
             </p>
           </>
         ) : (
-          <p className="mt-1.5 text-xs text-slate-500">
+          <p className="mt-1.5 text-xs text-subtle">
             {frequency === 'weekly' && byweekday.length === 0
               ? 'Pick at least one weekday.'
               : 'Set a start date.'}

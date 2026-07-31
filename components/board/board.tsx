@@ -157,10 +157,10 @@ export function Board({
   if (!canWrite) {
     return (
       <>
-        <p className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <p className="mb-4 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-sm text-warning">
           You have view-only access to this project, so cards cannot be moved.
         </p>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-3 overflow-x-auto pb-4">
           {columns.map((column) => (
             <ReadOnlyColumn
               key={column.id}
@@ -177,7 +177,10 @@ export function Board({
   return (
     <>
       {error ? (
-        <p role="alert" className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p
+          role="alert"
+          className="mb-4 animate-pop rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger"
+        >
           {error}
         </p>
       ) : null}
@@ -189,7 +192,7 @@ export function Board({
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveTask(null)}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-3 overflow-x-auto pb-4">
           {columns.map((column) => (
             <Column
               key={column.id}
@@ -202,13 +205,14 @@ export function Board({
 
         <DragOverlay>
           {activeTask ? (
-            <div className="w-72 rotate-2 opacity-95">
+            <div className="w-[19rem] rotate-2 cursor-grabbing">
               <TaskCardBody
                 task={activeTask}
                 statusCategory={taskIndex.get(activeTask.id)?.category ?? 'todo'}
                 assigneeName={
                   activeTask.assignee_id ? assigneeNames[activeTask.assignee_id] : undefined
                 }
+                dragging
               />
             </div>
           ) : null}
@@ -228,21 +232,29 @@ function ColumnShell({
   const overLimit = column.wip_limit !== null && column.tasks.length > column.wip_limit
 
   return (
-    <section className="flex w-72 shrink-0 flex-col rounded-xl bg-slate-100/70 p-3">
-      <header className="mb-3 flex items-center justify-between">
+    <section className="flex w-[19rem] shrink-0 flex-col rounded-xl border border-line bg-sunken/60 p-2.5">
+      <header className="mb-2.5 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
           <span
             aria-hidden
-            className="size-2.5 rounded-full"
+            className="size-2 rounded-full"
             style={{ backgroundColor: column.color }}
           />
-          <h3 className="text-sm font-medium text-slate-900">{column.name}</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">
+            {column.name}
+          </h3>
         </div>
         <span
-          className={`rounded-full px-2 py-0.5 text-xs font-medium ${
-            overLimit ? 'bg-red-100 text-red-700' : 'bg-white text-slate-500'
+          className={`rounded-md px-1.5 py-0.5 text-[11px] font-medium tabular-nums ring-1 ring-inset ${
+            overLimit
+              ? 'bg-danger/12 text-danger ring-danger/25'
+              : 'bg-surface text-subtle ring-line'
           }`}
-          title={column.wip_limit ? `WIP limit ${column.wip_limit}` : undefined}
+          title={
+            column.wip_limit
+              ? `WIP limit ${column.wip_limit}${overLimit ? ' — exceeded' : ''}`
+              : undefined
+          }
         >
           {column.tasks.length}
           {column.wip_limit ? ` / ${column.wip_limit}` : ''}
@@ -268,8 +280,8 @@ function Column({
     <ColumnShell column={column}>
       <div
         ref={setNodeRef}
-        className={`flex min-h-24 flex-col gap-2 rounded-lg ${
-          isOver ? 'bg-indigo-50/60 outline-2 outline-dashed outline-indigo-300' : ''
+        className={`flex min-h-24 flex-col gap-2 rounded-lg transition-colors duration-150 ${
+          isOver ? 'bg-accent-soft/50 outline-2 outline-dashed outline-accent/40' : ''
         }`}
       >
         <SortableContext
@@ -287,7 +299,7 @@ function Column({
           ))}
         </SortableContext>
         {column.tasks.length === 0 ? (
-          <p className="px-1 py-6 text-center text-xs text-slate-400">Drop cards here</p>
+          <p className="px-1 py-8 text-center text-xs text-subtle">Drop cards here</p>
         ) : null}
       </div>
     </ColumnShell>
@@ -336,7 +348,7 @@ function SortableTask({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={isDragging ? 'opacity-40' : undefined}
+      className={`touch-none ${isDragging ? 'opacity-30' : 'cursor-grab active:cursor-grabbing'}`}
       {...attributes}
       {...listeners}
     >

@@ -1,47 +1,19 @@
 'use client'
 
+import { Field, SelectField } from '@/components/ui/field'
+import { IconBolt, IconRepeat } from '@/components/ui/icons'
 import type { WorkspaceMemberRow } from '@/lib/queries/workspaces'
 import type { Label, Task, WorkflowStatus, WorkType } from '@/lib/types'
-import { Field } from '@/components/ui/field'
 
-export function SelectField({
-  label,
-  name,
-  children,
-  defaultValue,
-  required,
-}: {
-  label: string
-  name: string
-  children: React.ReactNode
-  defaultValue?: string
-  required?: boolean
-}) {
-  return (
-    <div className="space-y-1.5">
-      <label htmlFor={name} className="block text-sm font-medium text-slate-700">
-        {label}
-      </label>
-      <select
-        id={name}
-        name={name}
-        defaultValue={defaultValue}
-        required={required}
-        className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
-                   text-slate-900 focus:border-indigo-500 focus:outline-none
-                   focus:ring-2 focus:ring-indigo-500/30"
-      >
-        {children}
-      </select>
-    </div>
-  )
-}
+// Re-exported so existing imports keep working from one implementation.
+export { SelectField }
 
 /**
- * The required work-type choice. Rendered with no option preselected on
- * create — spec.md §5.2 says the user must choose, so there is deliberately
- * no `defaultChecked` and the caller keeps the submit button disabled until
- * `value` is non-null.
+ * The required work-type choice.
+ *
+ * On create this renders with NO option selected — spec.md §5.2 says the user
+ * must choose, so there is deliberately no `defaultChecked`, and the caller
+ * keeps the submit button disabled until `value` is non-null.
  */
 export function WorkTypeChoice({
   value,
@@ -54,17 +26,18 @@ export function WorkTypeChoice({
 }) {
   return (
     <fieldset>
-      <legend className="block text-sm font-medium text-slate-700">
-        Work type <span className="text-red-600">*</span>
+      <legend className="text-xs font-medium text-muted">
+        Work type <span className="text-danger">*</span>
       </legend>
-      <p className="mt-0.5 text-xs text-slate-500">
-        No default. This is what the workload and ad-hoc reports slice by.
+      <p className="mt-1 text-xs text-subtle">
+        No default — this is what the workload and ad-hoc reports slice by.
       </p>
       <div className="mt-2 grid grid-cols-2 gap-2">
         <Option
           value="recurring"
           label="Recurring"
           hint="Predictable, scheduled"
+          icon={<IconRepeat className="size-4" />}
           checked={value === 'recurring'}
           onSelect={onChange}
         />
@@ -72,11 +45,12 @@ export function WorkTypeChoice({
           value="adhoc"
           label="Ad-hoc"
           hint="An interrupt"
+          icon={<IconBolt className="size-4" />}
           checked={value === 'adhoc'}
           onSelect={onChange}
         />
       </div>
-      {error ? <p className="mt-1.5 text-sm text-red-600">{error}</p> : null}
+      {error ? <p className="mt-1.5 text-xs font-medium text-danger">{error}</p> : null}
     </fieldset>
   )
 }
@@ -85,12 +59,14 @@ function Option({
   value,
   label,
   hint,
+  icon,
   checked,
   onSelect,
 }: {
   value: WorkType
   label: string
   hint: string
+  icon: React.ReactNode
   checked: boolean
   onSelect: (v: WorkType) => void
 }) {
@@ -98,14 +74,14 @@ function Option({
   // interpolated `border-${accent}` would never be generated.
   const selected =
     value === 'adhoc'
-      ? 'border-adhoc bg-adhoc/10 ring-2 ring-adhoc/30'
-      : 'border-recurring bg-recurring/10 ring-2 ring-recurring/30'
+      ? 'border-adhoc bg-adhoc/10 text-adhoc ring-2 ring-adhoc/25'
+      : 'border-recurring bg-recurring/10 text-recurring ring-2 ring-recurring/25'
 
   return (
     <label
-      className={`cursor-pointer rounded-lg border p-3 transition ${
-        checked ? selected : 'border-slate-300 hover:bg-slate-50'
-      }`}
+      className={`flex cursor-pointer items-start gap-2.5 rounded-xl border p-3
+                  transition-all duration-150 active:scale-[0.99]
+                  ${checked ? selected : 'border-line text-muted hover:border-line-strong hover:bg-elevated'}`}
     >
       <input
         type="radio"
@@ -115,8 +91,11 @@ function Option({
         onChange={() => onSelect(value)}
         className="sr-only"
       />
-      <span className="block text-sm font-medium text-slate-900">{label}</span>
-      <span className="block text-xs text-slate-500">{hint}</span>
+      <span className="mt-0.5 shrink-0">{icon}</span>
+      <span className="min-w-0">
+        <span className={`block text-sm font-medium ${checked ? '' : 'text-fg'}`}>{label}</span>
+        <span className="block text-xs text-subtle">{hint}</span>
+      </span>
     </label>
   )
 }
@@ -135,7 +114,7 @@ export function CommonTaskFields({
 }) {
   return (
     <>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <SelectField label="Column" name="statusId" defaultValue={task?.status_id} required>
           {statuses.map((status) => (
             <option key={status.id} value={status.id}>
@@ -151,7 +130,7 @@ export function CommonTaskFields({
         </SelectField>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <SelectField label="Assignee" name="assigneeId" defaultValue={task?.assignee_id ?? ''}>
           <option value="">Unassigned</option>
           {members.map((member) => (
@@ -172,7 +151,7 @@ export function CommonTaskFields({
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Field
           label="Start date"
           name="startDate"
@@ -201,24 +180,24 @@ export function LabelPicker({
 }) {
   if (labels.length === 0) {
     return (
-      <p className="text-xs text-slate-500">
-        No labels in this project yet — create some from the board.
+      <p className="text-xs text-subtle">
+        No labels in this project yet — create some from the board or settings.
       </p>
     )
   }
 
   return (
     <fieldset>
-      <legend className="block text-sm font-medium text-slate-700">Labels</legend>
-      <div className="mt-2 flex flex-wrap gap-2">
+      <legend className="text-xs font-medium text-muted">Labels</legend>
+      <div className="mt-2 flex flex-wrap gap-1.5">
         {labels.map((label) => (
           <label
             key={label.id}
-            className="cursor-pointer select-none rounded-full border border-slate-300
-                       px-2.5 py-1 text-xs font-medium text-slate-700 transition
-                       hover:bg-slate-50 has-[:checked]:border-indigo-400
-                       has-[:checked]:bg-indigo-50 has-[:checked]:ring-2
-                       has-[:checked]:ring-indigo-200"
+            className="cursor-pointer select-none rounded-lg border border-line px-2.5 py-1
+                       text-xs font-medium text-muted transition-all duration-150
+                       hover:border-line-strong hover:bg-elevated
+                       has-[:checked]:border-accent has-[:checked]:bg-accent-soft
+                       has-[:checked]:text-accent"
           >
             <input
               type="checkbox"
@@ -236,7 +215,6 @@ export function LabelPicker({
           </label>
         ))}
       </div>
-      <p className="mt-1.5 text-xs text-slate-500">Selected labels are saved with the task.</p>
     </fieldset>
   )
 }

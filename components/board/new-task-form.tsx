@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react'
 
-import { Field, FormError, SubmitButton } from '@/components/ui/field'
+import { Field, FormError, SubmitButton, TextareaField } from '@/components/ui/field'
 import { Notice } from '@/components/ui/panel'
 import { createTaskAction, type TaskFormState } from '@/app/(app)/projects/[projectId]/actions'
 import type { WorkspaceMemberRow } from '@/lib/queries/workspaces'
@@ -51,24 +51,12 @@ export function NewTaskForm({
       <CommonTaskFields statuses={statuses} members={members} fieldErrors={state.fieldErrors} />
 
       {!compact ? (
-        <div className="space-y-1.5">
-          <label htmlFor="description" className="block text-sm font-medium text-slate-700">
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            rows={2}
-            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
-                       text-slate-900 focus:border-indigo-500 focus:outline-none
-                       focus:ring-2 focus:ring-indigo-500/30"
-          />
-        </div>
+        <TextareaField label="Description" name="description" rows={2} />
       ) : null}
 
       {workType === 'adhoc' ? (
-        <div className="space-y-4 rounded-lg border border-adhoc/30 bg-adhoc/5 p-3">
-          <p className="text-xs text-slate-600">
+        <div className="animate-rise space-y-3 rounded-xl border border-adhoc/30 bg-adhoc/8 p-3">
+          <p className="text-xs text-muted">
             Where did this interrupt come from? This is what makes the ad-hoc report
             actionable.
           </p>
@@ -93,7 +81,7 @@ export function NewTaskForm({
         <SubmitButton>{parentTaskId ? 'Add subtask' : 'Create task'}</SubmitButton>
       </div>
       {workType === null ? (
-        <p className="text-center text-xs text-slate-500">Pick a work type to continue</p>
+        <p className="text-center text-xs text-subtle">Pick a work type to continue</p>
       ) : null}
     </form>
   )

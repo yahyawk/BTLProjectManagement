@@ -26,8 +26,8 @@ export function LabelsPanel({
   )
 
   return (
-    <details className="rounded-xl border border-slate-200 bg-white p-5">
-      <summary className="cursor-pointer text-sm font-medium text-slate-900">
+    <details className="rounded-xl border border-line bg-surface p-5">
+      <summary className="cursor-pointer text-sm font-medium text-fg">
         Labels{labels.length > 0 ? ` (${labels.length})` : ''}
       </summary>
 
@@ -49,8 +49,8 @@ export function LabelsPanel({
                     type="submit"
                     aria-label={`Delete label ${label.name}`}
                     title="Delete label"
-                    className="rounded-r border border-l-0 border-slate-200 px-1.5 py-1 text-xs
-                               text-slate-400 hover:bg-red-50 hover:text-red-600"
+                    className="rounded-r border border-l-0 border-line px-1.5 py-1 text-xs
+                               text-subtle hover:bg-danger/10 hover:text-danger"
                   >
                     ✕
                   </button>
@@ -59,14 +59,14 @@ export function LabelsPanel({
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-subtle">
             No labels yet. Create one and it becomes available on every card in this project.
           </p>
         )}
 
         <FormError message={deleteState.error} />
 
-        <form action={formAction} className="space-y-3 border-t border-slate-100 pt-4">
+        <form action={formAction} className="space-y-3 border-t border-line pt-4">
           <input type="hidden" name="projectId" value={projectId} />
           <FormError message={state.error} />
           <Notice message={state.notice} />
@@ -80,7 +80,7 @@ export function LabelsPanel({
             errors={state.fieldErrors?.name}
           />
           <fieldset>
-            <legend className="block text-sm font-medium text-slate-700">Colour</legend>
+            <legend className="block text-sm font-medium text-muted">Colour</legend>
             <div className="mt-2 flex flex-wrap gap-2">
               {LABEL_COLORS.map((color, index) => (
                 <label key={color} className="cursor-pointer">
@@ -92,7 +92,7 @@ export function LabelsPanel({
                     className="peer sr-only"
                   />
                   <span
-                    className="block size-6 rounded-full ring-offset-2 peer-checked:ring-2 peer-checked:ring-slate-900"
+                    className="block size-6 rounded-full ring-offset-2 peer-checked:ring-2 peer-checked:ring-fg"
                     style={{ backgroundColor: color }}
                   />
                 </label>
@@ -101,7 +101,7 @@ export function LabelsPanel({
           </fieldset>
           <button
             type="submit"
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+            className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-elevated hover:text-fg"
           >
             Create label
           </button>

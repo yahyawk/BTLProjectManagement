@@ -52,20 +52,20 @@ export function ProjectDetailsForm({ project }: { project: Project }) {
           defaultValue={project.key}
           maxLength={10}
           required
-          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm uppercase
-                     tracking-wide text-slate-900 focus:border-indigo-500 focus:outline-none
-                     focus:ring-2 focus:ring-indigo-500/30"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm uppercase
+                     tracking-wide text-fg focus:border-accent focus:outline-none
+                     focus:ring-2 focus:ring-accent/15"
           errors={state.fieldErrors?.key}
         />
       </div>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-subtle">
         Changing the key only affects <strong>new</strong> tasks. Existing refs like{' '}
         <code>{project.key}-1</code> are stored strings and keep their original prefix —
         rewriting them would break every link already shared outside the app.
       </p>
 
       <div className="space-y-1.5">
-        <label htmlFor="description" className="block text-sm font-medium text-slate-700">
+        <label htmlFor="description" className="block text-sm font-medium text-muted">
           Description
         </label>
         <textarea
@@ -73,8 +73,8 @@ export function ProjectDetailsForm({ project }: { project: Project }) {
           name="description"
           rows={2}
           defaultValue={project.description ?? ''}
-          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm
-                     focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+          className="w-full rounded-md border border-line bg-surface px-3 py-2 text-sm
+                     focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/15"
         />
       </div>
 
@@ -119,7 +119,7 @@ export function ColumnsEditor({
 
       <ul className="space-y-2">
         {statuses.map((status, index) => (
-          <li key={status.id} className="rounded-lg border border-slate-200 p-3">
+          <li key={status.id} className="rounded-lg border border-line p-3">
             <form action={editAction} className="flex flex-wrap items-end gap-2">
               <input type="hidden" name="projectId" value={projectId} />
               <input type="hidden" name="statusId" value={status.id} />
@@ -152,14 +152,14 @@ export function ColumnsEditor({
               </div>
               <button
                 type="submit"
-                className="h-[38px] rounded-md border border-slate-300 px-3 text-sm font-medium
-                           text-slate-700 hover:bg-slate-100"
+                className="h-[38px] rounded-md border border-line px-3 text-sm font-medium
+                           text-muted hover:bg-elevated"
               >
                 Save
               </button>
             </form>
 
-            <div className="mt-2 flex items-center gap-2 border-t border-slate-100 pt-2">
+            <div className="mt-2 flex items-center gap-2 border-t border-line pt-2">
               <ReorderButton
                 projectId={projectId}
                 statusId={status.id}
@@ -177,7 +177,7 @@ export function ColumnsEditor({
                 <input type="hidden" name="statusId" value={status.id} />
                 <button
                   type="submit"
-                  className="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                  className="rounded-md px-2 py-1 text-xs font-medium text-danger hover:bg-danger/10"
                 >
                   Delete column
                 </button>
@@ -187,7 +187,7 @@ export function ColumnsEditor({
         ))}
       </ul>
 
-      <form action={createAction} className="space-y-3 border-t border-slate-100 pt-4">
+      <form action={createAction} className="space-y-3 border-t border-line pt-4">
         <input type="hidden" name="projectId" value={projectId} />
         <FormError message={createState.error} />
         <Notice message={createState.notice} />
@@ -216,7 +216,7 @@ export function ColumnsEditor({
           </div>
         </div>
         <fieldset>
-          <legend className="block text-sm font-medium text-slate-700">Colour</legend>
+          <legend className="block text-sm font-medium text-muted">Colour</legend>
           <div className="mt-2 flex flex-wrap gap-2">
             {LABEL_COLORS.map((color, index) => (
               <label key={color} className="cursor-pointer">
@@ -228,7 +228,7 @@ export function ColumnsEditor({
                   className="peer sr-only"
                 />
                 <span
-                  className="block size-6 rounded-full ring-offset-2 peer-checked:ring-2 peer-checked:ring-slate-900"
+                  className="block size-6 rounded-full ring-offset-2 peer-checked:ring-2 peer-checked:ring-fg"
                   style={{ backgroundColor: color }}
                 />
               </label>
@@ -237,13 +237,13 @@ export function ColumnsEditor({
         </fieldset>
         <button
           type="submit"
-          className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium text-muted transition-colors hover:bg-elevated hover:text-fg"
         >
           Add column
         </button>
       </form>
 
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-subtle">
         The <strong>category</strong> is what reporting groups by, so a column named
         &ldquo;Shipped&rdquo; still counts as done everywhere. A column holding tasks cannot be
         deleted — the foreign key refuses it, so nobody&apos;s work can be orphaned by a
@@ -273,8 +273,8 @@ function ReorderButton({
         type="submit"
         disabled={disabled}
         aria-label={direction === 'left' ? 'Move column left' : 'Move column right'}
-        className="rounded-md border border-slate-300 px-2 py-1 text-xs text-slate-700
-                   hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+        className="rounded-md border border-line px-2 py-1 text-xs text-muted
+                   hover:bg-elevated disabled:cursor-not-allowed disabled:opacity-40"
       >
         {direction === 'left' ? '←' : '→'}
       </button>

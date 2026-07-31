@@ -1,4 +1,4 @@
-# Teamflow
+# BTL Project Management App
 
 Team work-tracking that makes the split between **recurring** and **ad-hoc**
 work a first-class concept, so a lead can see where capacity actually goes.
@@ -17,6 +17,14 @@ entries, Realtime board sync, loading skeletons and error boundaries.
 
 Six migrations are applied. `supabase/seed.sql` loads a demo workspace with
 three people across four weeks.
+
+**Design.** A dark-first interface with a real light mode, driven entirely by
+semantic CSS variables in `app/globals.css` — `bg-surface`, `text-fg`,
+`border-line` and so on. Light and dark are the same markup; only the variables
+flip. Theme choice is stored in `localStorage` and applied by an inline script
+before first paint, so there is no flash of the wrong theme. Icons are
+hand-rolled inline SVG and animations are plain CSS, so the whole redesign adds
+zero dependencies.
 
 ## Setup
 

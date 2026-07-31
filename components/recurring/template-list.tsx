@@ -66,12 +66,12 @@ export function TemplateList({
           <input type="hidden" name="projectId" value={projectId} />
           <button
             type="submit"
-            className="rounded-md border border-slate-300 px-3 py-1.5 text-sm font-medium
-                       text-slate-700 transition hover:bg-slate-100"
+            className="rounded-md border border-line px-3 py-1.5 text-sm font-medium
+                       text-muted transition hover:bg-elevated"
           >
             Run generator now
           </button>
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-subtle">
             Same code the nightly cron runs. Safe to press twice — the second press
             creates nothing.
           </span>
@@ -84,7 +84,7 @@ export function TemplateList({
       <Notice message={deleteState.notice} />
 
       {runState.summary && runState.summary.errors.length > 0 ? (
-        <ul className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <ul className="rounded-md border border-warning/30 bg-warning/10 p-3 text-sm text-warning">
           {runState.summary.errors.map((e, i) => (
             <li key={i}>
               <strong>{e.template}:</strong> {e.message}
@@ -94,7 +94,7 @@ export function TemplateList({
       ) : null}
 
       {templates.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
+        <p className="surface-card border-dashed p-6 text-center text-sm text-subtle">
           No recurrence templates yet. Create one below and the generator will
           materialise real tasks from it.
         </p>
@@ -117,8 +117,8 @@ export function TemplateList({
             return (
               <li
                 key={template.id}
-                className={`rounded-xl border bg-white p-4 ${
-                  template.is_active ? 'border-slate-200' : 'border-slate-200 opacity-60'
+                className={`rounded-xl border bg-surface p-4 ${
+                  template.is_active ? 'border-line' : 'border-line opacity-60'
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -128,13 +128,13 @@ export function TemplateList({
                         Recurring
                       </span>
                       {!template.is_active ? (
-                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500">
+                        <span className="rounded-full bg-elevated px-2 py-0.5 text-[11px] font-medium text-subtle">
                           Paused
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-1 font-medium text-slate-900">{template.title}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="mt-1 font-medium text-fg">{template.title}</p>
+                    <p className="text-xs text-subtle">
                       {describeSchedule(template)} · {template.lead_time_days}d lead
                       {template.estimate_hours !== null
                         ? ` · ${template.estimate_hours}h`
@@ -155,8 +155,8 @@ export function TemplateList({
                         />
                         <button
                           type="submit"
-                          className="rounded-md border border-slate-300 px-2.5 py-1 text-xs
-                                     font-medium text-slate-700 hover:bg-slate-100"
+                          className="rounded-md border border-line px-2.5 py-1 text-xs
+                                     font-medium text-muted hover:bg-elevated"
                         >
                           {template.is_active ? 'Pause' : 'Resume'}
                         </button>
@@ -166,7 +166,7 @@ export function TemplateList({
                         <input type="hidden" name="templateId" value={template.id} />
                         <button
                           type="submit"
-                          className="rounded-md px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                          className="rounded-md px-2 py-1 text-xs font-medium text-danger hover:bg-danger/10"
                         >
                           Delete
                         </button>
@@ -175,8 +175,8 @@ export function TemplateList({
                   ) : null}
                 </div>
 
-                <div className="mt-3 border-t border-slate-100 pt-3">
-                  <p className="text-xs text-slate-500">
+                <div className="mt-3 border-t border-line pt-3">
+                  <p className="text-xs text-subtle">
                     Next due <strong>{formatDate(template.next_run_at)}</strong>
                     {template.is_active ? (
                       <>
@@ -191,7 +191,7 @@ export function TemplateList({
                     ) : null}
                   </p>
                   {preview.length > 1 ? (
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="mt-1 text-xs text-subtle">
                       then {preview.slice(1).map(formatDate).join(', ')}
                     </p>
                   ) : null}

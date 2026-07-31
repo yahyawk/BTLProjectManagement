@@ -1,12 +1,14 @@
 import Link from 'next/link'
 
-import { Panel } from '@/components/ui/panel'
+import { AddMemberForm, CreateProjectForm, CreateWorkspaceForm } from './forms'
+import { Avatar } from '@/components/ui/badge'
+import { IconFolder } from '@/components/ui/icons'
+import { EmptyState, PageHeader, Panel } from '@/components/ui/panel'
 import { listProjects } from '@/lib/queries/projects'
 import { listMyWorkspaces, listWorkspaceMembers } from '@/lib/queries/workspaces'
 import type { Project, Workspace } from '@/lib/types'
-import { AddMemberForm, CreateProjectForm, CreateWorkspaceForm } from './forms'
 
-export const metadata = { title: 'Home · Teamflow' }
+export const metadata = { title: 'Projects' }
 
 export default async function HomePage({
   searchParams,
@@ -16,22 +18,20 @@ export default async function HomePage({
   const { ws } = await searchParams
   const workspacesResult = await listMyWorkspaces()
 
-  if (!workspacesResult.ok) {
-    return <ErrorPanel message={workspacesResult.error} />
-  }
+  if (!workspacesResult.ok) return <ErrorPanel message={workspacesResult.error} />
 
   const workspaces = workspacesResult.data
 
   if (workspaces.length === 0) {
     return (
-      <div className="mx-auto max-w-md space-y-6">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+      <div className="mx-auto max-w-md space-y-5">
+        <div className="text-center">
+          <h1 className="text-xl font-semibold tracking-tight text-fg">
             Create your workspace
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            A workspace is the boundary for your team — its members, projects and
-            reporting all live inside it.
+          <p className="mt-1.5 text-sm text-muted">
+            A workspace is the boundary for your team — its members, projects and reporting
+            all live inside it.
           </p>
         </div>
         <Panel title="New workspace">
@@ -41,7 +41,6 @@ export default async function HomePage({
     )
   }
 
-  // ?ws= lets someone in more than one workspace switch; default to the oldest.
   const active = workspaces.find((w) => w.id === ws) ?? workspaces[0]
 
   const [projectsResult, membersResult] = await Promise.all([
@@ -56,112 +55,133 @@ export default async function HomePage({
   const members = membersResult.data
 
   return (
-    <div className="space-y-8">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
-            {active.name}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
+    <div className="space-y-6">
+      <PageHeader
+        title={active.name}
+        subtitle={
+          <>
             {projects.length} {projects.length === 1 ? 'project' : 'projects'} ·{' '}
             {members.length} {members.length === 1 ? 'member' : 'members'}
-          </p>
-        </div>
-        {workspaces.length > 1 ? <WorkspaceSwitcher all={workspaces} active={active} /> : null}
-      </header>
+          </>
+        }
+        actions={
+          workspaces.length > 1 ? (
+            <WorkspaceSwitcher all={workspaces} active={active} />
+          ) : undefined
+        }
+      />
 
-      <section className="space-y-4">
-        <h2 className="text-sm font-medium text-slate-900">Projects</h2>
+      <section className="space-y-3">
+        <h2 className="text-xs font-semibold uppercase tracking-wider text-subtle">Projects</h2>
         {projects.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-slate-300 p-6 text-center text-sm text-slate-500">
-            No projects yet. Create one below and it gets four board columns
-            automatically.
-          </p>
+          <EmptyState
+            icon={<IconFolder className="size-5" />}
+            title="No projects yet"
+            description="Create one below — it gets four board columns automatically."
+          />
         ) : (
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {projects.map((project, index) => (
+              <ProjectCard key={project.id} project={project} index={index} />
             ))}
           </ul>
         )}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-5 lg:grid-cols-2">
         <Panel
           title="New project"
-          description="Four columns — Backlog, In Progress, In Review, Done — are seeded by the database."
+          description="Backlog, In Progress, In Review and Done are seeded by the database."
         >
           <CreateProjectForm workspaceId={active.id} />
         </Panel>
 
-        <Panel title="Members" description="Everyone here can see every project in this workspace.">
-          <ul className="mb-5 divide-y divide-slate-100 text-sm">
+        <Panel
+          title="Members"
+          description="Everyone here can see every project in this workspace."
+        >
+          <ul className="mb-5 space-y-1">
             {members.map((member) => (
-              <li key={member.user_id} className="flex items-center justify-between py-2">
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-900">{member.full_name}</p>
-                  <p className="truncate text-xs text-slate-500">{member.email ?? '—'}</p>
+              <li
+                key={member.user_id}
+                className="flex items-center gap-2.5 rounded-lg px-1 py-1.5"
+              >
+                <Avatar name={member.full_name} seed={member.user_id} size="sm" />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-fg">{member.full_name}</p>
+                  <p className="truncate text-xs text-subtle">{member.email ?? '—'}</p>
                 </div>
-                <span className="ml-3 shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium capitalize text-slate-600">
+                <span className="shrink-0 rounded-md bg-elevated px-1.5 py-0.5 text-[10px] font-medium capitalize text-muted ring-1 ring-inset ring-line">
                   {member.role}
                 </span>
               </li>
             ))}
           </ul>
-          <AddMemberForm workspaceId={active.id} />
+          <div className="border-t border-line pt-4">
+            <AddMemberForm workspaceId={active.id} />
+          </div>
         </Panel>
       </div>
     </div>
   )
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({ project, index }: { project: Project; index: number }) {
   return (
-    <li>
+    <li className="animate-rise" style={{ animationDelay: `${Math.min(index, 8) * 40}ms` }}>
       <Link
         href={`/projects/${project.id}/board` as never}
-        className="block rounded-xl border border-slate-200 bg-white p-4 transition
-                   hover:border-slate-300 hover:shadow-sm focus:outline-none
-                   focus:ring-2 focus:ring-indigo-500"
+        className="group relative block h-full overflow-hidden rounded-xl border border-line
+                   bg-surface p-4 shadow-card transition-all duration-200
+                   hover:-translate-y-0.5 hover:border-line-strong hover:shadow-pop"
       >
+        <span
+          aria-hidden
+          className="absolute inset-x-0 top-0 h-0.5 opacity-70 transition-opacity group-hover:opacity-100"
+          style={{ backgroundColor: project.color }}
+        />
         <div className="flex items-center gap-2">
           <span
             aria-hidden
-            className="size-2.5 rounded-full"
+            className="size-2.5 rounded-[3px]"
             style={{ backgroundColor: project.color }}
           />
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-medium text-slate-600">
+          <span className="rounded-md bg-elevated px-1.5 py-0.5 font-mono text-[10px] font-semibold text-muted ring-1 ring-inset ring-line">
             {project.key}
           </span>
+          <span className="ml-auto text-[11px] capitalize text-subtle">
+            {project.state.replace('_', ' ')}
+          </span>
         </div>
-        <p className="mt-2 font-medium text-slate-900">{project.name}</p>
-        <p className="mt-0.5 text-xs capitalize text-slate-500">
-          {project.state.replace('_', ' ')}
+
+        <p className="mt-2.5 font-medium text-fg">{project.name}</p>
+        {project.description ? (
+          <p className="mt-1 line-clamp-2 text-xs text-muted">{project.description}</p>
+        ) : null}
+
+        <p className="mt-3 flex items-center gap-1 text-xs font-medium text-accent opacity-0 transition-opacity group-hover:opacity-100">
+          Open board
+          <span aria-hidden className="transition-transform group-hover:translate-x-0.5">
+            →
+          </span>
         </p>
-        <p className="mt-3 text-xs text-indigo-600">Open board →</p>
       </Link>
     </li>
   )
 }
 
-function WorkspaceSwitcher({
-  all,
-  active,
-}: {
-  all: Workspace[]
-  active: Workspace
-}) {
+function WorkspaceSwitcher({ all, active }: { all: Workspace[]; active: Workspace }) {
   return (
-    <nav className="flex flex-wrap gap-2" aria-label="Switch workspace">
+    <nav className="flex flex-wrap gap-1 rounded-lg bg-elevated p-0.5" aria-label="Switch workspace">
       {all.map((workspace) => (
         <Link
           key={workspace.id}
           href={{ pathname: '/', query: { ws: workspace.id } }}
-          className={
+          className={`rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors ${
             workspace.id === active.id
-              ? 'rounded-md bg-slate-900 px-3 py-1.5 text-sm font-medium text-white'
-              : 'rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-100'
-          }
+              ? 'bg-surface text-fg shadow-card'
+              : 'text-muted hover:text-fg'
+          }`}
         >
           {workspace.name}
         </Link>
@@ -172,7 +192,7 @@ function WorkspaceSwitcher({
 
 function ErrorPanel({ message }: { message: string }) {
   return (
-    <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+    <p className="rounded-xl border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
       Something went wrong: {message}
     </p>
   )

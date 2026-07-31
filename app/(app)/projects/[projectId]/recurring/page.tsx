@@ -5,7 +5,7 @@ import { canWriteProject } from '@/lib/queries/projects'
 import { listTemplates } from '@/lib/queries/recurrence'
 import { listProjectAssignees } from '@/lib/queries/workspaces'
 
-export const metadata = { title: 'Recurring · Teamflow' }
+export const metadata = { title: 'Recurring · BTL' }
 
 export default async function RecurringPage({
   params,
@@ -22,7 +22,7 @@ export default async function RecurringPage({
 
   if (!templatesResult.ok) {
     return (
-      <p className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+      <p className="rounded-lg border border-danger/30 bg-danger/10 p-4 text-sm text-danger">
         Could not load templates: {templatesResult.error}
       </p>
     )
@@ -34,8 +34,8 @@ export default async function RecurringPage({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-sm font-medium text-slate-900">Recurrence templates</h2>
-        <p className="mt-1 text-sm text-slate-500">
+        <h2 className="text-sm font-medium text-fg">Recurrence templates</h2>
+        <p className="mt-1 text-sm text-subtle">
           Blueprints that generate real tasks on a schedule. Every task they create is
           <span className="mx-1 rounded bg-recurring/15 px-1.5 py-0.5 text-xs font-medium text-recurring">
             recurring

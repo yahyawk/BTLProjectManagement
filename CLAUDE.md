@@ -1,4 +1,4 @@
-# CLAUDE.md — Teamflow project conventions
+# CLAUDE.md — BTL Project Management App conventions
 
 Read this **and** `spec.md` at the start of every session. `spec.md` is the
 source of truth for *what* to build; this file is the source of truth for *how*.
@@ -193,6 +193,30 @@ where it first matters, as a new numbered migration.
 ---
 
 ## 9. UI conventions
+
+**The design system lives in `app/globals.css`.** Semantic tokens only:
+
+- Surfaces: `bg-canvas`, `bg-surface`, `bg-elevated`, `bg-sunken`
+- Text: `text-fg`, `text-muted`, `text-subtle`
+- Lines: `border-line`, `border-line-strong`
+- Semantics: `text-accent`, `text-danger`, `text-warning`, `text-success`,
+  plus `bg-recurring` / `bg-adhoc`
+
+**Never reach for a raw palette class** (`bg-slate-100`, `text-indigo-600`).
+They do not respond to the theme, so they look correct in light mode and broken
+in dark. If a token is missing, add it to `globals.css` rather than working
+around it.
+
+Light and dark are the same markup — the variables flip via `[data-theme]`, set
+by an inline script in the root layout before first paint. `dark:` is redefined
+as a custom variant to follow that attribute, so an explicit choice beats the OS
+preference.
+
+Shared primitives live in `components/ui/`: `field.tsx` (Field, SelectField,
+TextareaField, Button), `panel.tsx` (Panel, PageHeader, Stat, EmptyState,
+Notice), `badge.tsx` (WorkTypeBadge, PriorityBadge, Chip, LabelChip, Avatar),
+`icons.tsx` (hand-rolled inline SVG — no icon library) and `skeleton.tsx`.
+
 
 - shadcn/ui is the target per §7 but is **not installed** — the user declined
   its dependencies at M0 and again at M2. Primitives are hand-rolled in

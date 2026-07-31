@@ -40,8 +40,8 @@ export function TimeLog({
   return (
     <section className="space-y-3">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium text-slate-900">Time</h3>
-        <span className="text-xs text-slate-500">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-subtle">Time</h3>
+        <span className="text-xs text-subtle">
           {logged}h logged
           {estimateHours !== null ? ` of ${estimateHours}h estimated` : ' · no estimate'}
         </span>
@@ -49,15 +49,15 @@ export function TimeLog({
 
       {estimateHours !== null && estimateHours > 0 ? (
         <div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-slate-200">
+          <div className="h-1.5 overflow-hidden rounded-full bg-elevated">
             <div
               className={`h-full rounded-full transition-all ${
-                over ? 'bg-red-500' : 'bg-emerald-500'
+                over ? 'bg-danger/100' : 'bg-success/100'
               }`}
               style={{ width: `${Math.max(pct, logged > 0 ? 4 : 0)}%` }}
             />
           </div>
-          <p className={`mt-1 text-xs ${over ? 'text-red-600' : 'text-slate-500'}`}>
+          <p className={`mt-1 text-xs ${over ? 'text-danger' : 'text-subtle'}`}>
             {over
               ? `${Math.round((logged - estimateHours) * 100) / 100}h over estimate`
               : `${Math.round((estimateHours - logged) * 100) / 100}h remaining`}
@@ -70,13 +70,13 @@ export function TimeLog({
           {summary.entries.map((entry) => (
             <li
               key={entry.id}
-              className="flex items-center gap-2 rounded-md bg-slate-50 px-2.5 py-1.5 text-sm"
+              className="flex items-center gap-2 rounded-md bg-elevated px-2.5 py-1.5 text-sm"
             >
-              <span className="w-12 shrink-0 font-medium text-slate-900">{entry.hours}h</span>
-              <span className="w-14 shrink-0 text-xs text-slate-500">
+              <span className="w-12 shrink-0 font-medium text-fg">{entry.hours}h</span>
+              <span className="w-14 shrink-0 text-xs text-subtle">
                 {formatDate(entry.entryDate)}
               </span>
-              <span className="min-w-0 flex-1 truncate text-xs text-slate-600">
+              <span className="min-w-0 flex-1 truncate text-xs text-muted">
                 {entry.userName}
                 {entry.note ? ` — ${entry.note}` : ''}
               </span>
@@ -87,7 +87,7 @@ export function TimeLog({
                   <button
                     type="submit"
                     aria-label="Delete entry"
-                    className="rounded px-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-red-600"
+                    className="rounded px-1 text-xs text-subtle hover:bg-elevated hover:text-danger"
                   >
                     ✕
                   </button>
@@ -97,7 +97,7 @@ export function TimeLog({
           ))}
         </ul>
       ) : (
-        <p className="text-xs text-slate-500">No time logged yet.</p>
+        <p className="text-xs text-subtle">No time logged yet.</p>
       )}
 
       <form
@@ -132,8 +132,8 @@ export function TimeLog({
         <Field label="Note" name="note" type="text" placeholder="Optional" />
         <button
           type="submit"
-          className="h-[38px] rounded-md border border-slate-300 px-3 text-sm font-medium
-                     text-slate-700 hover:bg-slate-100"
+          className="h-[38px] rounded-md border border-line px-3 text-sm font-medium
+                     text-muted hover:bg-elevated"
         >
           Log
         </button>

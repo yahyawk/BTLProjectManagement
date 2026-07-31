@@ -6,10 +6,7 @@ import { Field, FormError, SubmitButton } from '@/components/ui/field'
 import { loginAction, type AuthFormState } from '../actions'
 
 export function LoginForm({ next }: { next?: string }) {
-  const [state, formAction] = useActionState<AuthFormState, FormData>(
-    loginAction,
-    {},
-  )
+  const [state, formAction] = useActionState<AuthFormState, FormData>(loginAction, {})
 
   return (
     <form action={formAction} className="space-y-4">
@@ -19,6 +16,7 @@ export function LoginForm({ next }: { next?: string }) {
         label="Email"
         name="email"
         type="email"
+        placeholder="you@company.com"
         autoComplete="email"
         required
         errors={state.fieldErrors?.email}
@@ -27,6 +25,7 @@ export function LoginForm({ next }: { next?: string }) {
         label="Password"
         name="password"
         type="password"
+        placeholder="••••••••"
         autoComplete="current-password"
         required
         errors={state.fieldErrors?.password}

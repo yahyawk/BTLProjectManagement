@@ -5,7 +5,7 @@
 -- at least three people and four weeks, or the workload view can't be
 -- evaluated."
 --
--- Everything lands in a dedicated "Teamflow Demo" workspace with a fixed id,
+-- Everything lands in a dedicated "BTL Demo" workspace with a fixed id,
 -- so it never mixes with real data and teardown is exact. Your own account is
 -- added as its owner, so it shows up in the workspace switcher on `/`.
 --
@@ -51,7 +51,7 @@ update profiles set weekly_capacity_hours = 32, job_title = 'Support lead'
 
 -- --- Workspace ----------------------------------------------------------
 insert into workspaces (id, name, slug, created_by)
-values ('d0000000-0000-4000-8000-00000000000a', 'Teamflow Demo', 'teamflow-demo',
+values ('d0000000-0000-4000-8000-00000000000a', 'BTL Demo', 'btl-demo',
         'd0000000-0000-4000-8000-000000000001');
 
 -- The real account (earliest non-demo profile) owns it so it is visible in
