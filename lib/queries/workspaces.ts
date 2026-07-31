@@ -106,6 +106,30 @@ export async function listWorkspaceMembers(
 }
 
 /**
+ * People assignable on a project — i.e. every member of its workspace.
+ *
+ * `project_members` exists to *narrow* access, but per schema.sql a project
+ * with zero rows there is visible to the whole workspace, which is the only
+ * mode the MVP uses. So workspace membership is the assignable set.
+ */
+export async function listProjectAssignees(
+  projectId: string,
+): Promise<QueryResult<WorkspaceMemberRow[]>> {
+  const supabase = await createClient()
+
+  const { data: project, error: projectError } = await supabase
+    .from('projects')
+    .select('workspace_id')
+    .eq('id', projectId)
+    .maybeSingle()
+
+  if (projectError) return { ok: false, error: projectError.message }
+  if (!project) return { ok: true, data: [] }
+
+  return listWorkspaceMembers(project.workspace_id)
+}
+
+/**
  * Adds an existing Teamflow user to a workspace by email, via the
  * `add_workspace_member_by_email` RPC (migration 0002).
  *

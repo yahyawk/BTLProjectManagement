@@ -80,6 +80,8 @@ Env is read through `lib/env.ts`, which validates lazily with Zod so
   env.ts                      Zod-validated env access
   types.ts                    hand-written aliases over generated types
   database.types.ts           GENERATED — do not hand-edit
+  constants.ts                LEAF — palettes, POSITION_GAP
+  dates.ts                    LEAF — isOverdue, formatDate, todayIso
   /supabase                   client.ts (browser), server.ts, middleware.ts
   /queries                    ALL data access, one file per entity
   recurrence.ts               computeNextOccurrence()                (M4)
@@ -111,6 +113,11 @@ wins). Import with the `@/` alias, never `../../..`.
    creation, `tasks.ref`, `completed_at`, and default `workflow_statuses` —
    do not reimplement any of that in TypeScript.
 7. Regenerate `lib/database.types.ts` after every migration. Never hand-edit it.
+8. **A `'use client'` module may only take *types* from `/lib/queries`.**
+   Importing a value — even a plain constant — pulls `lib/supabase/server.ts`
+   and therefore `next/headers` into the browser bundle, and the build fails.
+   Shared constants go in `lib/constants.ts`, shared formatting in
+   `lib/dates.ts`. Both are leaf modules with no Supabase import, on purpose.
 
 ---
 
@@ -150,7 +157,8 @@ where it first matters, as a new numbered migration.
 |---|---|---|
 | 1 | ~~First `workspace_members` insert is impossible.~~ **Fixed in `0002`** by `create_workspace_with_owner()`. A second RPC, `add_workspace_member_by_email()`, covers the related gap that `profiles_select` hides the invitee from the inviter. | ✅ M1 |
 | 2 | **The three reporting views bypass RLS** (`security_definer_view`, ERROR-level in the Supabase advisor). Any signed-in user can read every workspace's workload. Needs `alter view … set (security_invoker = on)`. | **M5 — security** |
-| 3 | `v_task_load` filters `parent_task_id is null` claiming subtask hours "roll up", but nothing rolls them up — subtask estimates vanish from Workload. | M3/M5 |
+| 3 | `v_task_load` filters `parent_task_id is null` claiming subtask hours "roll up", but nothing rolls them up — subtask estimates vanish from Workload. **M3 made this reachable**: subtasks now carry their own assignee and `estimate_hours`, so the hours exist and are silently excluded. Decide in M5: either sum subtask estimates into the parent, or drop the `parent_task_id is null` filter and count subtasks directly. | **M5 — decide** |
+| 10 | ~~`can_access_project()`/`can_access_task()` were used as *write* gates on six tables, so a `viewer` could edit board columns, labels, templates, project members, task labels and checklist items.~~ **Fixed in `0004`** via `can_write_project()` / `can_write_task()`. Comments remain open to viewers deliberately. | ✅ M3 |
 | 4 | `next_run_at` is ambiguous: §5.1 advances it to the occurrence date, which makes `lead_time_days` a no-op. Agreed reading: it holds the **occurrence** date; generate when `next_run_at - lead_time_days <= current_date`. | M4 |
 | 5 | ~~`/tasks/[ref]` is not globally unique.~~ **Fixed in M2** — the route is `/projects/[projectId]/tasks/[ref]` and `getTaskByRef` filters on both. | ✅ M2 |
 | 6 | ~~`assign_task_ref()` is not `security definer`.~~ **Fixed in `0003`**, which also split `tasks_all` into select/insert/update/delete so a `viewer` is genuinely read-only (`can_write_project`) rather than failing later on a NULL `ref`. | ✅ M2 |

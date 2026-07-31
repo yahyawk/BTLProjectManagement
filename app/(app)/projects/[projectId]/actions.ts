@@ -2,6 +2,13 @@
 
 import { revalidatePath } from 'next/cache'
 
+import {
+  addChecklistItem,
+  deleteChecklistItem,
+  setChecklistItemDone,
+} from '@/lib/queries/checklist'
+import { addComment, deleteComment } from '@/lib/queries/comments'
+import { createLabel, deleteLabel, setTaskLabels } from '@/lib/queries/labels'
 import { createTask, deleteTask, moveTask, updateTask } from '@/lib/queries/tasks'
 
 export type TaskFormState = {
@@ -11,7 +18,26 @@ export type TaskFormState = {
 }
 
 function revalidateProject(projectId: string) {
-  revalidatePath(`/projects/${projectId}/board`)
+  revalidatePath(`/projects/${projectId}`, 'layout')
+}
+
+/** Pulls the shared task fields out of a form in one place. */
+function taskFieldsFrom(formData: FormData) {
+  return {
+    title: formData.get('title'),
+    // Passed through as-is: with no radio checked this is null and Zod
+    // rejects it. work_type must never acquire a default.
+    workType: formData.get('workType'),
+    priority: formData.get('priority') ?? 'medium',
+    statusId: formData.get('statusId'),
+    assigneeId: formData.get('assigneeId') ?? '',
+    startDate: formData.get('startDate') ?? '',
+    dueDate: formData.get('dueDate') ?? '',
+    estimateHours: formData.get('estimateHours') ?? '',
+    description: formData.get('description') ?? '',
+    requestedBy: formData.get('requestedBy') ?? '',
+    sourceNote: formData.get('sourceNote') ?? '',
+  }
 }
 
 export async function createTaskAction(
@@ -22,15 +48,8 @@ export async function createTaskAction(
 
   const result = await createTask({
     projectId,
-    statusId: formData.get('statusId'),
-    title: formData.get('title'),
-    // Deliberately passed through as-is: if no radio is checked this is null
-    // and Zod rejects it. work_type must never acquire a default.
-    workType: formData.get('workType'),
-    priority: formData.get('priority') ?? 'medium',
-    description: formData.get('description') ?? '',
-    requestedBy: formData.get('requestedBy') ?? '',
-    sourceNote: formData.get('sourceNote') ?? '',
+    parentTaskId: formData.get('parentTaskId') ?? '',
+    ...taskFieldsFrom(formData),
   })
 
   if (!result.ok) return { error: result.error, fieldErrors: result.fieldErrors }
@@ -47,19 +66,19 @@ export async function updateTaskAction(
 
   const result = await updateTask({
     taskId: formData.get('taskId'),
-    title: formData.get('title'),
-    workType: formData.get('workType'),
-    priority: formData.get('priority'),
-    statusId: formData.get('statusId'),
-    description: formData.get('description') ?? '',
-    requestedBy: formData.get('requestedBy') ?? '',
-    sourceNote: formData.get('sourceNote') ?? '',
+    ...taskFieldsFrom(formData),
   })
 
   if (!result.ok) return { error: result.error, fieldErrors: result.fieldErrors }
 
+  // Labels live in a join table, so they are a separate write.
+  const labelResult = await setTaskLabels(
+    formData.get('taskId'),
+    formData.getAll('labelIds').map(String),
+  )
+  if (!labelResult.ok) return { error: labelResult.error }
+
   revalidateProject(projectId)
-  revalidatePath(`/projects/${projectId}/tasks/${result.data.ref}`)
   return { notice: 'Saved.' }
 }
 
@@ -76,10 +95,6 @@ export async function deleteTaskAction(
   return { notice: 'Task deleted.' }
 }
 
-/**
- * Called from the board after a drop. Returns a plain result rather than
- * throwing so the client can roll its optimistic state back.
- */
 export async function moveTaskAction(input: {
   projectId: string
   taskId: string
@@ -98,4 +113,93 @@ export async function moveTaskAction(input: {
 
   revalidateProject(input.projectId)
   return { ok: true }
+}
+
+// --- Labels -----------------------------------------------------------
+
+export async function createLabelAction(
+  _prev: TaskFormState,
+  formData: FormData,
+): Promise<TaskFormState> {
+  const projectId = String(formData.get('projectId') ?? '')
+
+  const result = await createLabel({
+    projectId,
+    name: formData.get('name'),
+    color: formData.get('color') ?? '#64748b',
+  })
+
+  if (!result.ok) return { error: result.error, fieldErrors: result.fieldErrors }
+
+  revalidateProject(projectId)
+  return { notice: `Label “${result.data.name}” created.` }
+}
+
+export async function deleteLabelAction(
+  _prev: TaskFormState,
+  formData: FormData,
+): Promise<TaskFormState> {
+  const projectId = String(formData.get('projectId') ?? '')
+
+  const result = await deleteLabel(formData.get('labelId'))
+  if (!result.ok) return { error: result.error }
+
+  revalidateProject(projectId)
+  return { notice: 'Label deleted.' }
+}
+
+// --- Checklist --------------------------------------------------------
+
+export async function addChecklistItemAction(
+  _prev: TaskFormState,
+  formData: FormData,
+): Promise<TaskFormState> {
+  const projectId = String(formData.get('projectId') ?? '')
+
+  const result = await addChecklistItem({
+    taskId: formData.get('taskId'),
+    content: formData.get('content'),
+  })
+
+  if (!result.ok) return { error: result.error, fieldErrors: result.fieldErrors }
+
+  revalidateProject(projectId)
+  return {}
+}
+
+export async function toggleChecklistItemAction(formData: FormData) {
+  const projectId = String(formData.get('projectId') ?? '')
+  await setChecklistItemDone(formData.get('itemId'), formData.get('isDone') === 'true')
+  revalidateProject(projectId)
+}
+
+export async function deleteChecklistItemAction(formData: FormData) {
+  const projectId = String(formData.get('projectId') ?? '')
+  await deleteChecklistItem(formData.get('itemId'))
+  revalidateProject(projectId)
+}
+
+// --- Comments ---------------------------------------------------------
+
+export async function addCommentAction(
+  _prev: TaskFormState,
+  formData: FormData,
+): Promise<TaskFormState> {
+  const projectId = String(formData.get('projectId') ?? '')
+
+  const result = await addComment({
+    taskId: formData.get('taskId'),
+    body: formData.get('body'),
+  })
+
+  if (!result.ok) return { error: result.error, fieldErrors: result.fieldErrors }
+
+  revalidateProject(projectId)
+  return {}
+}
+
+export async function deleteCommentAction(formData: FormData) {
+  const projectId = String(formData.get('projectId') ?? '')
+  await deleteComment(formData.get('commentId'))
+  revalidateProject(projectId)
 }

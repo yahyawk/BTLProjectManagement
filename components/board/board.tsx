@@ -21,8 +21,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
-import type { BoardColumn } from '@/lib/queries/tasks'
-import type { Task } from '@/lib/types'
+import type { BoardColumn, BoardTask } from '@/lib/queries/tasks'
 import { moveTaskAction } from '@/app/(app)/projects/[projectId]/actions'
 import { TaskCardBody, TaskCardLink } from './task-card'
 
@@ -30,13 +29,20 @@ type Props = {
   projectId: string
   columns: BoardColumn[]
   canWrite: boolean
+  /** user_id -> full_name, so cards can show an assignee without another join. */
+  assigneeNames: Record<string, string>
 }
 
-export function Board({ projectId, columns: serverColumns, canWrite }: Props) {
+export function Board({
+  projectId,
+  columns: serverColumns,
+  canWrite,
+  assigneeNames,
+}: Props) {
   // Optimistic mirror of the server data. Re-synced whenever the server sends
   // a new board (after revalidatePath), so a rejected move snaps back.
   const [columns, setColumns] = useState(serverColumns)
-  const [activeTask, setActiveTask] = useState<Task | null>(null)
+  const [activeTask, setActiveTask] = useState<BoardTask | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [, startTransition] = useTransition()
   const router = useRouter()
@@ -53,9 +59,10 @@ export function Board({ projectId, columns: serverColumns, canWrite }: Props) {
   )
 
   const taskIndex = useMemo(() => {
-    const map = new Map<string, { task: Task; columnId: string }>()
+    const map = new Map<string, { task: BoardTask; columnId: string; category: string }>()
     for (const column of columns) {
-      for (const task of column.tasks) map.set(task.id, { task, columnId: column.id })
+      for (const task of column.tasks)
+        map.set(task.id, { task, columnId: column.id, category: column.category })
     }
     return map
   }, [columns])
@@ -155,7 +162,12 @@ export function Board({ projectId, columns: serverColumns, canWrite }: Props) {
         </p>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {columns.map((column) => (
-            <ReadOnlyColumn key={column.id} column={column} projectId={projectId} />
+            <ReadOnlyColumn
+              key={column.id}
+              column={column}
+              projectId={projectId}
+              assigneeNames={assigneeNames}
+            />
           ))}
         </div>
       </>
@@ -179,14 +191,25 @@ export function Board({ projectId, columns: serverColumns, canWrite }: Props) {
       >
         <div className="flex gap-4 overflow-x-auto pb-4">
           {columns.map((column) => (
-            <Column key={column.id} column={column} projectId={projectId} />
+            <Column
+              key={column.id}
+              column={column}
+              projectId={projectId}
+              assigneeNames={assigneeNames}
+            />
           ))}
         </div>
 
         <DragOverlay>
           {activeTask ? (
             <div className="w-72 rotate-2 opacity-95">
-              <TaskCardBody task={activeTask} />
+              <TaskCardBody
+                task={activeTask}
+                statusCategory={taskIndex.get(activeTask.id)?.category ?? 'todo'}
+                assigneeName={
+                  activeTask.assignee_id ? assigneeNames[activeTask.assignee_id] : undefined
+                }
+              />
             </div>
           ) : null}
         </DragOverlay>
@@ -230,7 +253,15 @@ function ColumnShell({
   )
 }
 
-function Column({ column, projectId }: { column: BoardColumn; projectId: string }) {
+function Column({
+  column,
+  projectId,
+  assigneeNames,
+}: {
+  column: BoardColumn
+  projectId: string
+  assigneeNames: Record<string, string>
+}) {
   const { setNodeRef, isOver } = useSortable({ id: column.id, data: { isColumn: true } })
 
   return (
@@ -246,7 +277,13 @@ function Column({ column, projectId }: { column: BoardColumn; projectId: string 
           strategy={verticalListSortingStrategy}
         >
           {column.tasks.map((task) => (
-            <SortableTask key={task.id} task={task} projectId={projectId} />
+            <SortableTask
+              key={task.id}
+              task={task}
+              projectId={projectId}
+              statusCategory={column.category}
+              assigneeNames={assigneeNames}
+            />
           ))}
         </SortableContext>
         {column.tasks.length === 0 ? (
@@ -257,17 +294,41 @@ function Column({ column, projectId }: { column: BoardColumn; projectId: string 
   )
 }
 
-function ReadOnlyColumn({ column, projectId }: { column: BoardColumn; projectId: string }) {
+function ReadOnlyColumn({
+  column,
+  projectId,
+  assigneeNames,
+}: {
+  column: BoardColumn
+  projectId: string
+  assigneeNames: Record<string, string>
+}) {
   return (
     <ColumnShell column={column}>
       {column.tasks.map((task) => (
-        <TaskCardLink key={task.id} task={task} projectId={projectId} />
+        <TaskCardLink
+          key={task.id}
+          task={task}
+          projectId={projectId}
+          statusCategory={column.category}
+          assigneeName={task.assignee_id ? assigneeNames[task.assignee_id] : undefined}
+        />
       ))}
     </ColumnShell>
   )
 }
 
-function SortableTask({ task, projectId }: { task: Task; projectId: string }) {
+function SortableTask({
+  task,
+  projectId,
+  statusCategory,
+  assigneeNames,
+}: {
+  task: BoardTask
+  projectId: string
+  statusCategory: string
+  assigneeNames: Record<string, string>
+}) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: task.id })
 
@@ -279,7 +340,12 @@ function SortableTask({ task, projectId }: { task: Task; projectId: string }) {
       {...attributes}
       {...listeners}
     >
-      <TaskCardLink task={task} projectId={projectId} />
+      <TaskCardLink
+        task={task}
+        projectId={projectId}
+        statusCategory={statusCategory}
+        assigneeName={task.assignee_id ? assigneeNames[task.assignee_id] : undefined}
+      />
     </div>
   )
 }

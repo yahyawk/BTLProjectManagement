@@ -5,22 +5,28 @@ import { useRouter } from 'next/navigation'
 
 import { Field, FormError, SubmitButton } from '@/components/ui/field'
 import { Notice } from '@/components/ui/panel'
-import { SelectField } from '@/components/board/new-task-form'
+import { CommonTaskFields, LabelPicker, WorkTypeChoice } from '@/components/board/task-fields'
 import {
   deleteTaskAction,
   updateTaskAction,
   type TaskFormState,
 } from '@/app/(app)/projects/[projectId]/actions'
-import type { Task, WorkflowStatus, WorkType } from '@/lib/types'
+import type { BoardTask } from '@/lib/queries/tasks'
+import type { WorkspaceMemberRow } from '@/lib/queries/workspaces'
+import type { Label, WorkflowStatus, WorkType } from '@/lib/types'
 
 export function EditTaskForm({
   projectId,
   task,
   statuses,
+  members,
+  labels,
 }: {
   projectId: string
-  task: Task
+  task: BoardTask
   statuses: WorkflowStatus[]
+  members: WorkspaceMemberRow[]
+  labels: Label[]
 }) {
   const [state, formAction] = useActionState<TaskFormState, FormData>(updateTaskAction, {})
   const [workType, setWorkType] = useState<WorkType>(task.work_type)
@@ -42,52 +48,20 @@ export function EditTaskForm({
           errors={state.fieldErrors?.title}
         />
 
-        <fieldset>
-          <legend className="block text-sm font-medium text-slate-700">Work type</legend>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            {(['recurring', 'adhoc'] as const).map((value) => {
-              const checked = workType === value
-              const selected =
-                value === 'adhoc'
-                  ? 'border-adhoc bg-adhoc/10 ring-2 ring-adhoc/30'
-                  : 'border-recurring bg-recurring/10 ring-2 ring-recurring/30'
-              return (
-                <label
-                  key={value}
-                  className={`cursor-pointer rounded-lg border p-2.5 text-center text-sm font-medium transition ${
-                    checked ? selected : 'border-slate-300 hover:bg-slate-50'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="workType"
-                    value={value}
-                    checked={checked}
-                    onChange={() => setWorkType(value)}
-                    className="sr-only"
-                  />
-                  {value === 'adhoc' ? 'Ad-hoc' : 'Recurring'}
-                </label>
-              )
-            })}
-          </div>
-        </fieldset>
+        <WorkTypeChoice
+          value={workType}
+          onChange={setWorkType}
+          error={state.fieldErrors?.workType?.[0]}
+        />
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <SelectField label="Column" name="statusId" defaultValue={task.status_id} required>
-            {statuses.map((status) => (
-              <option key={status.id} value={status.id}>
-                {status.name}
-              </option>
-            ))}
-          </SelectField>
-          <SelectField label="Priority" name="priority" defaultValue={task.priority}>
-            <option value="urgent">Urgent</option>
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </SelectField>
-        </div>
+        <CommonTaskFields
+          statuses={statuses}
+          members={members}
+          task={task}
+          fieldErrors={state.fieldErrors}
+        />
+
+        <LabelPicker labels={labels} selectedIds={task.labels.map((l) => l.id)} />
 
         <div className="space-y-1.5">
           <label htmlFor="description" className="block text-sm font-medium text-slate-700">
@@ -154,10 +128,12 @@ function DeleteTaskForm({
     <div className="border-t border-slate-200 pt-4">
       <FormError message={state.error} />
       {confirming ? (
-        <form action={formAction} className="flex items-center gap-3">
+        <form action={formAction} className="flex flex-wrap items-center gap-3">
           <input type="hidden" name="projectId" value={projectId} />
           <input type="hidden" name="taskId" value={taskId} />
-          <p className="text-sm text-slate-700">Delete {taskRef} permanently?</p>
+          <p className="text-sm text-slate-700">
+            Delete {taskRef} and its subtasks permanently?
+          </p>
           <button
             type="submit"
             className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"

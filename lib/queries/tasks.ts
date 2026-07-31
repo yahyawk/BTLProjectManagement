@@ -1,7 +1,9 @@
 import { z } from 'zod'
 
+import { POSITION_GAP } from '@/lib/constants'
 import { createClient } from '@/lib/supabase/server'
 import type {
+  Label,
   PriorityLevel,
   QueryResult,
   Task,
@@ -9,49 +11,64 @@ import type {
   WorkType,
 } from '@/lib/types'
 
-/** Gap between sparse positions. New cards land at max + this. */
-export const POSITION_GAP = 1024
-
 const WORK_TYPES = ['recurring', 'adhoc'] as const satisfies readonly WorkType[]
 const PRIORITIES = ['urgent', 'high', 'medium', 'low'] as const satisfies readonly PriorityLevel[]
 
-/**
- * `work_type` has no default and no fallback — spec.md §4.1. If this ever
- * gains `.default(...)`, the app has lost the thing that makes it worth
- * building.
- */
-export const createTaskSchema = z.object({
-  projectId: z.uuid('Invalid project'),
-  statusId: z.uuid('Pick a column'),
+/** '' from an untouched form input means "not set", not an empty value. */
+const optionalText = z.string().trim().optional().or(z.literal(''))
+
+const optionalDate = z
+  .union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use the date picker')])
+  .optional()
+
+const optionalHours = z
+  .union([
+    z.literal(''),
+    z.coerce
+      .number({ message: 'Estimate must be a number' })
+      .min(0, 'Estimate cannot be negative')
+      .max(9999, 'Estimate looks too large'),
+  ])
+  .optional()
+
+const optionalUuid = z.union([z.literal(''), z.uuid()]).optional()
+
+/** Turns the form's empty strings into real NULLs for the database. */
+function nullify<T extends string | number>(value: T | '' | undefined): T | null {
+  return value === '' || value === undefined ? null : value
+}
+
+const taskFields = {
   title: z
     .string()
     .trim()
     .min(2, 'Title must be at least 2 characters')
     .max(200, 'Title must be 200 characters or fewer'),
-  workType: z.enum(WORK_TYPES, { message: 'Choose whether this is recurring or ad-hoc' }),
-  priority: z.enum(PRIORITIES).default('medium'),
-  description: z.string().trim().max(4000).optional().or(z.literal('')),
-  // Ad-hoc provenance (spec.md §5.2) — where did this interrupt come from?
-  requestedBy: z.string().trim().max(120).optional().or(z.literal('')),
-  sourceNote: z.string().trim().max(500).optional().or(z.literal('')),
-})
-
-export const updateTaskSchema = z.object({
-  taskId: z.uuid(),
-  title: z.string().trim().min(2, 'Title must be at least 2 characters').max(200),
+  /**
+   * No `.default()`, ever. spec.md §4.1 — if work_type can be skipped, the
+   * workload and ad-hoc reports quietly stop meaning anything.
+   */
   workType: z.enum(WORK_TYPES, { message: 'Choose whether this is recurring or ad-hoc' }),
   priority: z.enum(PRIORITIES),
-  statusId: z.uuid(),
-  description: z.string().trim().max(4000).optional().or(z.literal('')),
-  requestedBy: z.string().trim().max(120).optional().or(z.literal('')),
-  sourceNote: z.string().trim().max(500).optional().or(z.literal('')),
+  statusId: z.uuid('Pick a column'),
+  assigneeId: optionalUuid,
+  startDate: optionalDate,
+  dueDate: optionalDate,
+  estimateHours: optionalHours,
+  description: optionalText,
+  requestedBy: optionalText,
+  sourceNote: optionalText,
+}
+
+export const createTaskSchema = z.object({
+  projectId: z.uuid('Invalid project'),
+  parentTaskId: optionalUuid,
+  ...taskFields,
+  priority: taskFields.priority.default('medium'),
 })
 
-/**
- * A move sends the neighbours it was dropped between, not a computed number.
- * The server reads their live positions, so a stale client cannot write a
- * position that collides with or leapfrogs its neighbours.
- */
+export const updateTaskSchema = z.object({ taskId: z.uuid(), ...taskFields })
+
 export const moveTaskSchema = z.object({
   taskId: z.uuid(),
   statusId: z.uuid(),
@@ -59,32 +76,74 @@ export const moveTaskSchema = z.object({
   afterId: z.uuid().nullable(),
 })
 
-export type BoardColumn = WorkflowStatus & { tasks: Task[] }
+export type BoardTask = Task & { labels: Label[] }
+export type BoardColumn = WorkflowStatus & { tasks: BoardTask[] }
+
+export type BoardFilters = {
+  assigneeId?: string
+  workType?: WorkType
+  priority?: PriorityLevel
+  labelId?: string
+}
 
 function toError(message: string): { ok: false; error: string } {
   return { ok: false, error: message }
 }
 
-/** Maps the RLS/constraint failures we expect into human sentences. */
 function describeWriteError(error: { code?: string; message: string }) {
   if (error.code === '42501') {
     return toError('You have view-only access to this project, so you cannot change tasks.')
   }
-  if (error.code === '23503') {
-    return toError('That project or column no longer exists.')
+  if (error.code === '23503') return toError('That project, column or person no longer exists.')
+  if (error.code === '23514') {
+    // due_after_start is the only CHECK a user can trip from the form.
+    return toError('The due date cannot be before the start date.')
   }
   return toError(error.message)
 }
 
+const TASK_SELECT = '*, task_labels(labels(*))'
+
+type TaskRow = Task & { task_labels: { labels: Label | null }[] | null }
+
+function withLabels(row: TaskRow): BoardTask {
+  const { task_labels, ...task } = row
+  const labels = (task_labels ?? [])
+    .map((join) => join.labels)
+    .filter((label): label is Label => label !== null)
+    .sort((a, b) => a.name.localeCompare(b.name))
+
+  return { ...task, labels }
+}
+
 /**
- * The whole board in two queries: columns ordered by position, then every
- * non-archived top-level task in the project.
+ * The whole board: columns ordered by position, then every non-archived
+ * top-level task, with labels attached.
  *
- * Subtasks (parent_task_id not null) are excluded — they render inside their
- * parent's detail view from M3, not as their own cards.
+ * Subtasks are excluded — they render inside their parent's detail view, not
+ * as their own cards.
  */
-export async function getBoard(projectId: string): Promise<QueryResult<BoardColumn[]>> {
+export async function getBoard(
+  projectId: string,
+  filters: BoardFilters = {},
+): Promise<QueryResult<BoardColumn[]>> {
   const supabase = await createClient()
+
+  let taskQuery = supabase
+    .from('tasks')
+    .select(TASK_SELECT)
+    .eq('project_id', projectId)
+    .eq('is_archived', false)
+    .is('parent_task_id', null)
+    .order('position', { ascending: true })
+
+  if (filters.workType) taskQuery = taskQuery.eq('work_type', filters.workType)
+  if (filters.priority) taskQuery = taskQuery.eq('priority', filters.priority)
+  if (filters.assigneeId === 'unassigned') {
+    taskQuery = taskQuery.is('assignee_id', null)
+  } else if (filters.assigneeId) {
+    taskQuery = taskQuery.eq('assignee_id', filters.assigneeId)
+  }
 
   const [statusesRes, tasksRes] = await Promise.all([
     supabase
@@ -92,19 +151,21 @@ export async function getBoard(projectId: string): Promise<QueryResult<BoardColu
       .select('*')
       .eq('project_id', projectId)
       .order('position', { ascending: true }),
-    supabase
-      .from('tasks')
-      .select('*')
-      .eq('project_id', projectId)
-      .eq('is_archived', false)
-      .is('parent_task_id', null)
-      .order('position', { ascending: true }),
+    taskQuery,
   ])
 
   if (statusesRes.error) return toError(statusesRes.error.message)
   if (tasksRes.error) return toError(tasksRes.error.message)
 
-  const tasks = tasksRes.data ?? []
+  let tasks = ((tasksRes.data ?? []) as TaskRow[]).map(withLabels)
+
+  // Label filtering happens here rather than in SQL: filtering a nested
+  // embed would drop the other labels from the rows it keeps, and a board is
+  // small enough that this costs nothing.
+  if (filters.labelId) {
+    tasks = tasks.filter((task) => task.labels.some((l) => l.id === filters.labelId))
+  }
+
   const columns = (statusesRes.data ?? []).map((status) => ({
     ...status,
     tasks: tasks.filter((task) => task.status_id === status.id),
@@ -114,28 +175,42 @@ export async function getBoard(projectId: string): Promise<QueryResult<BoardColu
 }
 
 /**
- * A single task by its human ref, scoped to its project.
- *
- * The project scope is required, not cosmetic: `ref` is unique per project
- * (`ref_unique_per_project`), so `OPS-1` alone can match rows in different
- * projects. See CLAUDE.md §8 issue #5.
+ * A single task by its human ref, scoped to its project — `ref` is unique per
+ * project, not globally (CLAUDE.md §8 issue #5).
  */
 export async function getTaskByRef(
   projectId: string,
   ref: string,
-): Promise<QueryResult<Task | null>> {
+): Promise<QueryResult<BoardTask | null>> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
     .from('tasks')
-    .select('*')
+    .select(TASK_SELECT)
     .eq('project_id', projectId)
     .eq('ref', ref.toUpperCase())
     .maybeSingle()
 
   if (error) return toError(error.message)
+  if (!data) return { ok: true, data: null }
 
-  return { ok: true, data }
+  return { ok: true, data: withLabels(data as TaskRow) }
+}
+
+/** One level of subtasks. The schema allows deeper nesting; the product does not. */
+export async function listSubtasks(parentTaskId: string): Promise<QueryResult<Task[]>> {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('tasks')
+    .select('*')
+    .eq('parent_task_id', parentTaskId)
+    .eq('is_archived', false)
+    .order('position', { ascending: true })
+
+  if (error) return toError(error.message)
+
+  return { ok: true, data: data ?? [] }
 }
 
 export async function createTask(input: unknown): Promise<QueryResult<Task>> {
@@ -154,7 +229,23 @@ export async function createTask(input: unknown): Promise<QueryResult<Task>> {
   } = await supabase.auth.getUser()
   if (!user) return toError('You are not signed in.')
 
-  // Land at the bottom of the target column.
+  const parentTaskId = nullify(parsed.data.parentTaskId)
+
+  // Guard the one-level rule: you cannot nest under something already nested.
+  if (parentTaskId) {
+    const { data: parent, error: parentError } = await supabase
+      .from('tasks')
+      .select('parent_task_id')
+      .eq('id', parentTaskId)
+      .maybeSingle()
+
+    if (parentError) return toError(parentError.message)
+    if (!parent) return toError('That parent task no longer exists.')
+    if (parent.parent_task_id) {
+      return toError('Subtasks only go one level deep.')
+    }
+  }
+
   const { data: last, error: lastError } = await supabase
     .from('tasks')
     .select('position')
@@ -170,18 +261,22 @@ export async function createTask(input: unknown): Promise<QueryResult<Task>> {
     .from('tasks')
     .insert({
       project_id: parsed.data.projectId,
+      parent_task_id: parentTaskId,
       status_id: parsed.data.statusId,
       title: parsed.data.title,
       work_type: parsed.data.workType,
       priority: parsed.data.priority,
-      description: parsed.data.description || null,
-      requested_by: parsed.data.requestedBy || null,
-      source_note: parsed.data.sourceNote || null,
+      assignee_id: nullify(parsed.data.assigneeId),
+      start_date: nullify(parsed.data.startDate),
+      due_date: nullify(parsed.data.dueDate),
+      estimate_hours: nullify(parsed.data.estimateHours),
+      description: nullify(parsed.data.description),
+      requested_by: nullify(parsed.data.requestedBy),
+      source_note: nullify(parsed.data.sourceNote),
       position: (last?.position ?? 0) + POSITION_GAP,
       created_by: user.id,
       reporter_id: user.id,
-      // `ref` is NOT NULL but assigned by the before-insert trigger; this
-      // placeholder is overwritten and never reaches the row.
+      // Overwritten by the before-insert trigger; never reaches the row.
       ref: '',
     })
     .select()
@@ -210,9 +305,13 @@ export async function updateTask(input: unknown): Promise<QueryResult<Task>> {
       work_type: parsed.data.workType,
       priority: parsed.data.priority,
       status_id: parsed.data.statusId,
-      description: parsed.data.description || null,
-      requested_by: parsed.data.requestedBy || null,
-      source_note: parsed.data.sourceNote || null,
+      assignee_id: nullify(parsed.data.assigneeId),
+      start_date: nullify(parsed.data.startDate),
+      due_date: nullify(parsed.data.dueDate),
+      estimate_hours: nullify(parsed.data.estimateHours),
+      description: nullify(parsed.data.description),
+      requested_by: nullify(parsed.data.requestedBy),
+      source_note: nullify(parsed.data.sourceNote),
     })
     .eq('id', parsed.data.taskId)
     .select()
@@ -244,9 +343,7 @@ export async function deleteTask(taskId: unknown): Promise<QueryResult<null>> {
 
 /**
  * Persists a drag: new column plus a position midway between its neighbours.
- *
- * Sparse positions (spec.md §4.3) mean only the dragged row is written — no
- * reindexing the column on every drop.
+ * Only the dragged row is written — no reindexing (spec.md §4.3).
  */
 export async function moveTask(input: unknown): Promise<QueryResult<Task>> {
   const parsed = moveTaskSchema.safeParse(input)
@@ -272,15 +369,10 @@ export async function moveTask(input: unknown): Promise<QueryResult<Task>> {
   }
 
   let position: number
-  if (beforePos !== null && afterPos !== null) {
-    position = (beforePos + afterPos) / 2
-  } else if (beforePos !== null) {
-    position = beforePos + POSITION_GAP
-  } else if (afterPos !== null) {
-    position = afterPos / 2
-  } else {
-    position = POSITION_GAP
-  }
+  if (beforePos !== null && afterPos !== null) position = (beforePos + afterPos) / 2
+  else if (beforePos !== null) position = beforePos + POSITION_GAP
+  else if (afterPos !== null) position = afterPos / 2
+  else position = POSITION_GAP
 
   const { data, error } = await supabase
     .from('tasks')
