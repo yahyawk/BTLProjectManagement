@@ -11,7 +11,12 @@ export const config = {
     /*
      * Everything except static assets and image files. Auth routes are
      * included on purpose — signed-in users get bounced off /login.
+     *
+     * `api/cron` is excluded because it has no session to gate on: Vercel Cron
+     * authenticates with `Authorization: Bearer $CRON_SECRET`, not a cookie, so
+     * the cookie check would redirect it to /login and the route's own
+     * fail-closed secret check would never run.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/cron|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 }
